@@ -138,6 +138,8 @@ target_compile_definitions(airplay_native PRIVATE
     TARGET_RT_LITTLE_ENDIAN=1
 )
 
+target_link_options(airplay_native PRIVATE "-Wl,--build-id=none")
+
 target_link_libraries(airplay_native
     llhttp
     playfair

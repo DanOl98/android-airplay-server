@@ -38,6 +38,7 @@ data class AudioDebug(
     val decodeMeanUs: Int,
     val decodeMaxUs: Int,
     val decodeHeld: Int,
+    val decodeErrors: Int,
 )
 
 data class DebugInfo(

@@ -27,13 +27,14 @@ struct __attribute__((packed)) AudioDebugData {
     TimelineBuffer::Debug timeline;
     LatencyReporter::Debug decode;
     AudioOutput::Debug output;
+    int32_t decodeErrors;  // cumulative packets Decoder::decode() reported as failed
 };
 
 struct AudioConfig {
     const int staticCushionMs;   // 0 = adaptive tuner
     const int percentilePct;     // adaptive tuner target percentile
     const int oboeBufferFrames;  // 0 = auto, two bursts in low-latency mode, oboe default in power save
-    const bool forceSwAlac;      // embedded Apple software ALAC even when HW available
+    const bool forceSwAlac;      // embedded ffmpeg software ALAC even when HW available
     const bool realtimePriority; // decoder: request realtime priority
     const bool lowLatency;       // low-latency decoder + oboe low-latency output
     const bool benchmarkLog;     // periodically log decoder stats
@@ -115,6 +116,7 @@ struct AudioEngine {
                 mDebug.timeline = mTimeline->debugInfo();
                 mDebug.decode = mDecLatency.debugInfo();
                 mDebug.output = mOutput->debugInfo();
+                mDebug.decodeErrors = mDecodeErrors.load(std::memory_order_relaxed);
             }
         }
         memcpy(dst, &mDebug, sizeof(mDebug));
@@ -150,7 +152,8 @@ struct AudioEngine {
             // codec switch is definitely a discontinuity
             mTimeline->reanchorTracker();
         }
-        if (mDecoder.decoder) mDecoder.decoder->decode(data, len, ptsNs);
+        if (mDecoder.decoder && !mDecoder.decoder->decode(data, len, ptsNs))
+            mDecodeErrors.fetch_add(1, std::memory_order_relaxed);
     }
 
 private:
@@ -209,6 +212,7 @@ private:
     std::atomic<AudioConfig *> mPending{nullptr};
 
     AudioDebugData mDebug{};
+    std::atomic<int32_t> mDecodeErrors{0};
 };
 
 AudioEngine *audio_engine_create(std::shared_ptr<LogSink> log, int sampleRate, int channels) {

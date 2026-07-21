@@ -1028,7 +1028,7 @@ private fun debugOverlaySections(context: Context, info: DebugInfo): List<DebugS
         info.audio?.let { a ->
             add(context.getString(R.string.debug_audio_buffer, a.backlogMs, a.tunedCushionMs))
             add(context.getString(R.string.debug_audio_glitch, a.trims, a.drops, a.silences, a.underruns, a.xrun))
-            add(context.getString(R.string.debug_audio_decode, formatDecode(a.decodeMeanUs, a.decodeMaxUs, a.decodeHeld)))
+            add(context.getString(R.string.debug_audio_decode, formatDecode(a.decodeMeanUs, a.decodeMaxUs, a.decodeHeld, a.decodeErrors)))
         }
     }.takeIf { it.isNotEmpty() }?.let { add(DebugSection(context.getString(R.string.debug_section_audio), it)) }
 
@@ -1036,6 +1036,6 @@ private fun debugOverlaySections(context: Context, info: DebugInfo): List<DebugS
 }
 
 // "mean/max ms held=N", or "held=N" before first latency window lands
-private fun formatDecode(meanUs: Int, maxUs: Int, held: Int): String =
-    if (meanUs == 0) "held=$held"
-    else "%.1f/%.1f ms held=%d".format(meanUs / 1000.0, maxUs / 1000.0, held)
+private fun formatDecode(meanUs: Int, maxUs: Int, held: Int, errors: Int): String =
+    (if (meanUs == 0) "held=$held"
+    else "%.1f/%.1f ms held=%d".format(meanUs / 1000.0, maxUs / 1000.0, held)) + " errs=$errors"

@@ -75,8 +75,9 @@ class AudioRenderer {
         val maxUs = buf.int
         val held = buf.short.toInt() and 0xFFFF
         val xrun = buf.int
+        val decodeErrors = buf.int
         return AudioDebug(backlogMs, tunedCushionMs, trims, drops, silences, underruns, xrun,
-                          meanUs, maxUs, held)
+                          meanUs, maxUs, held, decodeErrors)
     }
 
     @Synchronized
@@ -100,7 +101,7 @@ class AudioRenderer {
     }
 
     companion object {
-        // must be >= native sizeof(AudioDebugData) (34 B)
+        // must be >= native sizeof(AudioDebugData) (38 B)
         private const val DEBUG_BUF_BYTES = 64
         const val CT_ALAC = 2
         const val CT_AAC_LC = 4

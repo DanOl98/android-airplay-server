@@ -23,6 +23,9 @@ add_subdirectory(third_party/openssl-cmake)
 # ---------- Oboe (low-latency audio output, via prefab AAR) ----------
 find_package(oboe REQUIRED CONFIG)
 
+# ---------- ffmpeg (software ALAC decoder) ----------
+include(BuildFFmpeg)
+
 # ---------- libplist (built from submodule source) ----------
 set(PLIST_SRC third_party/libplist/src)
 set(PLIST_CNARY third_party/libplist/libcnary)
@@ -97,17 +100,6 @@ set(AIRPLAY_SOURCES
     ${UXPLAY_LIB}/utils.c
 )
 
-# ---------- Apple ALAC reference decoder (Apache 2.0) ----------
-set(ALAC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/alac/codec)
-set(ALAC_SOURCES
-    ${ALAC_DIR}/ALACDecoder.cpp
-    ${ALAC_DIR}/ALACBitUtilities.c
-    ${ALAC_DIR}/ag_dec.c
-    ${ALAC_DIR}/dp_dec.c
-    ${ALAC_DIR}/matrix_dec.c
-    ${ALAC_DIR}/EndianPortable.c
-)
-
 # ---------- Android JNI bridge + dnssd shim ----------
 set(BRIDGE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/android_dnssd_shim.c
@@ -119,16 +111,15 @@ set(BRIDGE_SOURCES
 # ---------- Final shared library ----------
 add_library(airplay_native SHARED
     ${AIRPLAY_SOURCES}
-    ${ALAC_SOURCES}
     ${BRIDGE_SOURCES}
 )
+add_dependencies(airplay_native ffmpeg_ep)
 
 target_include_directories(airplay_native PRIVATE
     ${UXPLAY_LIB}
     ${UXPLAY_LIB}/llhttp
     ${UXPLAY_LIB}/playfair
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${ALAC_DIR}
 )
 
 target_compile_definitions(airplay_native PRIVATE
@@ -146,7 +137,9 @@ target_link_libraries(airplay_native
     crypto
     plist
     oboe::oboe
+    ffmpeg::avcodec
     mediandk
+    m
     log
     android
 )

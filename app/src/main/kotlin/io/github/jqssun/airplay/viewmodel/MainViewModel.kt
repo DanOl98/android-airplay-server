@@ -3,6 +3,7 @@ package io.github.jqssun.airplay.viewmodel
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.SystemClock
 import android.view.Surface
 import androidx.core.content.FileProvider
@@ -72,11 +73,16 @@ class MainViewModel @Inject constructor(app: Application) : AndroidViewModel(app
 
     private val prefs = app.getSharedPreferences(Prefs.NAME, Context.MODE_PRIVATE)
     private val logFile = File(app.filesDir, "airplay_logs.txt")
+    private val audioManager = app.getSystemService(AudioManager::class.java)
     private var service: AirPlayService? = null
     val dacpPlayer: Player? get() = service?.dacpPlayer
 
-    fun audioVolumeUp() { service?.dacpController?.volumeUp() }
-    fun audioVolumeDown() { service?.dacpController?.volumeDown() }
+    fun audioVolumeUp() {
+        audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, 0)
+    }
+    fun audioVolumeDown() {
+        audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, 0)
+    }
     fun audioScanBegin(forward: Boolean) {
         service?.dacpController?.let { if (forward) it.beginFastForward() else it.beginRewind() }
     }

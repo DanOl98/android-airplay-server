@@ -53,6 +53,7 @@ void android_callbacks_init(android_callback_ctx_t *ctx, JNIEnv *env, jobject ca
     ctx->on_audio_format = (*env)->GetMethodID(env, cls, "onAudioFormat", "(IIZ)V");
     ctx->on_video_size = (*env)->GetMethodID(env, cls, "onVideoSize", "(FFFF)V");
     ctx->on_volume_change = (*env)->GetMethodID(env, cls, "onVolumeChange", "(F)V");
+    ctx->on_client_volume = (*env)->GetMethodID(env, cls, "onClientVolume", "()F");
     ctx->on_conn_init = (*env)->GetMethodID(env, cls, "onConnectionInit", "()V");
     ctx->on_conn_destroy = (*env)->GetMethodID(env, cls, "onConnectionDestroy", "()V");
     ctx->on_conn_reset = (*env)->GetMethodID(env, cls, "onConnectionReset", "(I)V");
@@ -214,7 +215,12 @@ static void _video_reset(void *cls, reset_type_t t) {
 }
 static void _audio_flush(void *cls) { LOGI("audio_flush"); }
 static void _video_flush(void *cls) { LOGI("video_flush"); }
-static double _audio_set_client_volume(void *cls) { return 0.0; }
+static double _audio_set_client_volume(void *cls) {
+    android_callback_ctx_t *ctx = (android_callback_ctx_t *)cls;
+    JNIEnv *env = _get_env(ctx);
+    if (!env) return 0.0;
+    return (double)(*env)->CallFloatMethod(env, ctx->callback_obj, ctx->on_client_volume);
+}
 static void _audio_set_metadata(void *cls, const void *buf, int len) {
     android_callback_ctx_t *ctx = (android_callback_ctx_t *)cls;
     JNIEnv *env = _get_env(ctx);

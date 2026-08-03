@@ -128,6 +128,8 @@
     <string name="setting_overscanned">Overscanned</string>
     <string name="setting_overscanned_desc">Add pixel boundary for full-screen overscan displays</string>
     <string name="chip_custom">Custom</string>
+    <string name="chip_device_portrait">Portrait</string>
+    <string name="chip_device_landscape">Landscape</string>
 
     <!-- Settings: Decode -->
     <string name="setting_h265">H.265 (HEVC)</string>

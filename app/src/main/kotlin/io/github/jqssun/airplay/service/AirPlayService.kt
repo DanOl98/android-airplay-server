@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
+import android.content.res.Configuration
 import android.graphics.BitmapFactory
 import android.media.AudioManager
 import android.os.Binder
@@ -70,6 +71,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
     private var nsdManager: NsdServiceManager? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var foregroundStarted = false
+    private var lastOrientation = Configuration.ORIENTATION_UNDEFINED
 
     val videoRenderer = VideoRenderer()
     val audioRenderer = AudioRenderer()
@@ -342,7 +344,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         val maxFps = prefs.getInt(Prefs.MAX_FPS, Prefs.DEF_MAX_FPS)
         val overscanned = prefs.getBoolean(Prefs.OVERSCANNED, Prefs.DEF_OVERSCANNED)
         val audioLatencyMs = prefs.getInt(Prefs.AUDIO_LATENCY_MS, Prefs.DEF_AUDIO_LATENCY_MS)
-        val h265 = prefs.getBoolean(Prefs.H265_ENABLED, Prefs.DEF_H265_ENABLED) && VideoRenderer.supportsH265()
+        val h265 = _h265()
         val alac = prefs.getBoolean(Prefs.ALAC_ENABLED, Prefs.DEF_ALAC_ENABLED)
         val aac = prefs.getBoolean(Prefs.AAC_ENABLED, Prefs.DEF_AAC_ENABLED)
 
@@ -369,16 +371,8 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         }
 
         // set display params
-        val res = prefs.getString(Prefs.RESOLUTION, Prefs.DEF_RESOLUTION)!!
-        val (rawW, rawH) = when {
-            prefs.getBoolean(Prefs.AUTO_RES, Prefs.DEF_AUTO_RES) -> realDisplaySize()
-            res != "auto" && res.contains("x") -> res.split("x").let { it[0].toInt() to it[1].toInt() }
-            else -> resources.displayMetrics.let { it.widthPixels to it.heightPixels }
-        }
-        // strict decoders black-screen past their limits; advertised size is only upper bound for senders
-        val (maxW, maxH) = VideoRenderer.maxSupportedResolution(h265)
-        val w = rawW.coerceAtMost(maxW)
-        val h = rawH.coerceAtMost(maxH)
+        lastOrientation = resources.configuration.orientation
+        val (w, h) = _displaySize()
         videoRenderer.setResolution(w, h)
         _videoResolution.value = "${w}x${h}"
         _videoAspect.value = w.toFloat() / h
@@ -409,6 +403,44 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         }
         promoteToForeground()
         log("Server started on port $port")
+    }
+
+    private fun _h265(): Boolean =
+        prefs.getBoolean(Prefs.H265_ENABLED, Prefs.DEF_H265_ENABLED) && VideoRenderer.supportsH265()
+
+    private fun _orientationFollowsDevice(): Boolean =
+        prefs.getBoolean(Prefs.AUTO_RES, Prefs.DEF_AUTO_RES) ||
+            prefs.getString(Prefs.RESOLUTION, Prefs.DEF_RESOLUTION) == "auto"
+
+    private fun _displaySize(): Pair<Int, Int> {
+        val autoRes = prefs.getBoolean(Prefs.AUTO_RES, Prefs.DEF_AUTO_RES)
+        val res = if (autoRes) "auto" else prefs.getString(Prefs.RESOLUTION, Prefs.DEF_RESOLUTION)!!
+        val (w, h) = if (res.contains("x")) {
+            res.split("x").let { it[0].toInt() to it[1].toInt() }
+        } else {
+            val (rawW, rawH) = if (autoRes) realDisplaySize()
+                else resources.displayMetrics.let { it.widthPixels to it.heightPixels }
+            val portrait = when (res) {
+                "portrait" -> true
+                "landscape" -> false
+                else -> resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            }
+            if (portrait != rawH >= rawW) rawH to rawW else rawW to rawH
+        }
+        // strict decoders black-screen past their limits; advertised size is only upper bound for senders
+        val (maxW, maxH) = VideoRenderer.maxSupportedResolution(_h265())
+        return w.coerceAtMost(maxW) to h.coerceAtMost(maxH)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (newConfig.orientation == lastOrientation) return
+        lastOrientation = newConfig.orientation
+        if (nativeHandle == 0L || _serverState.value != ServerState.RUNNING) return
+        if (!_orientationFollowsDevice()) return
+        val (w, h) = _displaySize()
+        NativeBridge.nativeSetDisplaySize(nativeHandle, w, h, prefs.getInt(Prefs.MAX_FPS, Prefs.DEF_MAX_FPS))
+        log("Advertising ${w}x${h} from next session")
     }
 
     private fun _failStart() {

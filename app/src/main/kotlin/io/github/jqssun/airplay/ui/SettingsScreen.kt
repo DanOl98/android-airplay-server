@@ -464,6 +464,8 @@ private fun SettingResolution(
 ) {
     val presets = listOf(
         "auto" to stringResource(R.string.setting_resolution_auto),
+        "portrait" to stringResource(R.string.chip_device_portrait),
+        "landscape" to stringResource(R.string.chip_device_landscape),
         "1280x720" to "1280x720",
         "1920x1080" to "1920x1080",
         "3840x2160" to "3840x2160"

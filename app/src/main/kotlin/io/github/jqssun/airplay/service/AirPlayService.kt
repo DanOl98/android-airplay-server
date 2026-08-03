@@ -440,24 +440,21 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         prefs.getBoolean(Prefs.H265_ENABLED, Prefs.DEF_H265_ENABLED) && VideoRenderer.supportsH265()
 
     private fun _orientationFollowsDevice(): Boolean =
-        prefs.getBoolean(Prefs.AUTO_RES, Prefs.DEF_AUTO_RES) ||
-            prefs.getString(Prefs.RESOLUTION, Prefs.DEF_RESOLUTION) == "auto"
+        prefs.getString(Prefs.RESOLUTION, Prefs.DEF_RESOLUTION) == "auto"
 
     private fun _displaySize(): Pair<Int, Int> {
-        val autoRes = prefs.getBoolean(Prefs.AUTO_RES, Prefs.DEF_AUTO_RES)
-        val res = if (autoRes) "auto" else prefs.getString(Prefs.RESOLUTION, Prefs.DEF_RESOLUTION)!!
+        val res = prefs.getString(Prefs.RESOLUTION, Prefs.DEF_RESOLUTION)!!
+        val portrait = when (res) {
+            "portrait" -> true
+            "landscape" -> false
+            else -> resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        }
+        val (rawW, rawH) = realDisplaySize()
+        val device = if (portrait != rawH >= rawW) rawH to rawW else rawW to rawH
+        if (res == "portrait" || res == "landscape") return device
         val (w, h) = if (res.contains("x")) {
             res.split("x").let { it[0].toInt() to it[1].toInt() }
-        } else {
-            val (rawW, rawH) = if (autoRes) realDisplaySize()
-                else resources.displayMetrics.let { it.widthPixels to it.heightPixels }
-            val portrait = when (res) {
-                "portrait" -> true
-                "landscape" -> false
-                else -> resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-            }
-            if (portrait != rawH >= rawW) rawH to rawW else rawW to rawH
-        }
+        } else device
         // strict decoders black-screen past their limits; advertised size is only upper bound for senders
         val (maxW, maxH) = VideoRenderer.maxSupportedResolution(_h265())
         return w.coerceAtMost(maxW) to h.coerceAtMost(maxH)

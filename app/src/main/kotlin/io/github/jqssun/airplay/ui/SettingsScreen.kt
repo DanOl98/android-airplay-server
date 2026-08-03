@@ -27,7 +27,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.jqssun.airplay.Prefs
 import io.github.jqssun.airplay.R
-import io.github.jqssun.airplay.realDisplaySize
 import io.github.jqssun.airplay.viewmodel.MainViewModel
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -41,7 +40,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
     val alacEnabled by viewModel.alacEnabled.collectAsState()
     val aacEnabled by viewModel.aacEnabled.collectAsState()
     val resolution by viewModel.resolution.collectAsState()
-    val autoRes by viewModel.autoRes.collectAsState()
     val idlePreview by viewModel.idlePreview.collectAsState()
     val autoFullscreen by viewModel.autoFullscreen.collectAsState()
     val keepScreenOn by viewModel.keepScreenOn.collectAsState()
@@ -203,20 +201,10 @@ fun SettingsScreen(viewModel: MainViewModel) {
             onCheckedChange = { viewModel.setAutoFullscreen(it) }
         )
 
-        val (displayW, displayH) = remember(ctx) { ctx.realDisplaySize() }
-        SettingSwitch(
-            title = stringResource(R.string.setting_auto_res),
-            description = stringResource(R.string.setting_auto_res_desc, "${displayW}x${displayH}"),
-            checked = autoRes,
-            onCheckedChange = { viewModel.setAutoRes(it) }
+        SettingResolution(
+            value = resolution,
+            onValueChange = { viewModel.setResolution(it) }
         )
-
-        if (!autoRes) {
-            SettingResolution(
-                value = resolution,
-                onValueChange = { viewModel.setResolution(it) }
-            )
-        }
 
         SettingChipField(
             title = stringResource(R.string.setting_max_fps),
@@ -464,13 +452,15 @@ private fun SettingResolution(
 ) {
     val presets = listOf(
         "auto" to stringResource(R.string.setting_resolution_auto),
-        "portrait" to stringResource(R.string.chip_device_portrait),
-        "landscape" to stringResource(R.string.chip_device_landscape),
         "1280x720" to "1280x720",
         "1920x1080" to "1920x1080",
         "3840x2160" to "3840x2160"
     )
-    val isPreset = presets.any { it.first == value }
+    val devicePresets = listOf(
+        "portrait" to stringResource(R.string.chip_device_portrait),
+        "landscape" to stringResource(R.string.chip_device_landscape)
+    )
+    val isPreset = (presets + devicePresets).any { it.first == value }
     var editing by remember { mutableStateOf(false) }
     val parts = if (!isPreset && value.contains("x")) value.split("x", limit = 2) else listOf("", "")
     var width by remember(value) { mutableStateOf(if (isPreset) "" else parts[0]) }
@@ -484,24 +474,25 @@ private fun SettingResolution(
                 Text(stringResource(R.string.setting_resolution_desc))
                 Spacer(Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    presets.forEach { (key, label) ->
-                        FilterChip(
-                            selected = value == key && !editing,
-                            onClick = {
-                                editing = false
-                                width = ""; height = ""
-                                onValueChange(key)
-                            },
-                            label = { Text(label) },
-                            modifier = Modifier.dpadFocus()
-                        )
-                    }
+                    @Composable
+                    fun presetChip(key: String, label: String) = FilterChip(
+                        selected = value == key && !editing,
+                        onClick = {
+                            editing = false
+                            width = ""; height = ""
+                            onValueChange(key)
+                        },
+                        label = { Text(label) },
+                        modifier = Modifier.dpadFocus()
+                    )
+                    presets.forEach { (key, label) -> presetChip(key, label) }
                     FilterChip(
                         selected = !isPreset || editing,
                         onClick = { editing = true },
                         label = { Text(stringResource(R.string.chip_custom)) },
                         modifier = Modifier.dpadFocus()
                     )
+                    devicePresets.forEach { (key, label) -> presetChip(key, label) }
                 }
                 if (editing || !isPreset) {
                     Spacer(Modifier.height(8.dp))

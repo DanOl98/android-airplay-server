@@ -15,9 +15,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -77,48 +78,17 @@ fun SettingsScreen(viewModel: MainViewModel) {
     ) {
         SectionHeader(stringResource(R.string.section_server))
 
-        var nameText by remember(serverName) { mutableStateOf(serverName) }
-        OutlinedTextField(
-            value = nameText,
-            onValueChange = { nameText = it },
-            label = { Text(stringResource(R.string.setting_server_name)) },
-            singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 8.dp),
-            trailingIcon = {
-                if (nameText != serverName) {
-                    TextButton(onClick = { viewModel.setServerName(nameText) }) {
-                        Text(stringResource(R.string.btn_save))
-                    }
-                }
-            }
+        SettingTextField(
+            label = stringResource(R.string.setting_server_name),
+            value = serverName,
+            onCommit = { viewModel.setServerName(it) }
         )
 
-        var portText by remember(serverPort) { mutableStateOf(serverPort.toString()) }
-        val focus = LocalFocusManager.current
-        OutlinedTextField(
-            value = portText,
-            onValueChange = { portText = it.filter { c -> c.isDigit() }.take(5) },
-            label = { Text(stringResource(R.string.setting_server_port)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 8.dp),
-            isError = portText.toIntOrNull()?.let { it !in 1..65535 } ?: true,
-            trailingIcon = {
-                val port = portText.toIntOrNull()
-                if (portText != serverPort.toString() && port != null && port in 1..65535) {
-                    TextButton(onClick = { viewModel.setServerPort(port) }) { Text(stringResource(R.string.btn_save)) }
-                }
-            }
+        SettingTextField(
+            label = stringResource(R.string.setting_server_port),
+            value = serverPort.toString(),
+            onCommit = { viewModel.setServerPort(it.toInt()) },
+            range = 1..65535
         )
 
         SettingSwitch(
@@ -212,7 +182,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
             value = maxFps.toString(),
             presets = listOf("24" to "24", "30" to "30", "60" to "60", "120" to "120"),
             placeholder = stringResource(R.string.setting_max_fps_placeholder),
-            keyboard = KeyboardType.Number,
+            keyboardType = KeyboardType.Number,
             onValueChange = { it.toIntOrNull()?.let { v -> viewModel.setMaxFps(v) } }
         )
 
@@ -392,21 +362,21 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     }
                 )
             } else {
-                SettingNumberField(
-                    title = stringResource(R.string.setting_audio_cushion_ms),
+                SettingTextField(
+                    label = stringResource(R.string.setting_audio_cushion_ms),
+                    value = audioCushionMs.toString(),
+                    onCommit = { viewModel.setAudioCushionMs(it.toInt()) },
                     description = stringResource(R.string.setting_audio_cushion_ms_desc),
-                    value = audioCushionMs,
-                    range = 1..1000,
-                    onValueChange = { viewModel.setAudioCushionMs(it) }
+                    range = 1..1000
                 )
             }
 
-            SettingNumberField(
-                title = stringResource(R.string.setting_oboe_buffer_frames),
+            SettingTextField(
+                label = stringResource(R.string.setting_oboe_buffer_frames),
+                value = oboeBufferFrames.toString(),
+                onCommit = { viewModel.setOboeBufferFrames(it.toInt()) },
                 description = stringResource(R.string.setting_oboe_buffer_frames_desc),
-                value = oboeBufferFrames,
-                range = 0..8192,
-                onValueChange = { viewModel.setOboeBufferFrames(it) }
+                range = 0..8192
             )
 
 
@@ -465,7 +435,6 @@ private fun SettingResolution(
     val parts = if (!isPreset && value.contains("x")) value.split("x", limit = 2) else listOf("", "")
     var width by remember(value) { mutableStateOf(if (isPreset) "" else parts[0]) }
     var height by remember(value) { mutableStateOf(if (isPreset) "" else parts.getOrElse(1) { "" }) }
-    val focus = LocalFocusManager.current
 
     ListItem(
         headlineContent = { Text(stringResource(R.string.setting_resolution)) },
@@ -517,15 +486,14 @@ private fun SettingResolution(
                                 keyboardType = KeyboardType.Number,
                                 imeAction = ImeAction.Done
                             ),
-                            keyboardActions = KeyboardActions(onDone = {
+                            keyboardActions = doneAndHide {
                                 val w = width.toIntOrNull()
                                 val h = height.toIntOrNull()
                                 if (w != null && w > 0 && h != null && h > 0) {
                                     onValueChange("${w}x${h}")
                                     editing = false
                                 }
-                                focus.clearFocus()
-                            }),
+                            },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -536,38 +504,41 @@ private fun SettingResolution(
 }
 
 @Composable
-private fun SettingNumberField(
-    title: String,
-    description: String,
-    value: Int,
-    range: IntRange,
-    onValueChange: (Int) -> Unit
+private fun doneAndHide(commit: () -> Unit): KeyboardActions {
+    val keyboard = LocalSoftwareKeyboardController.current
+    return KeyboardActions(onDone = { commit(); keyboard?.hide() })
+}
+
+@Composable
+private fun SettingTextField(
+    label: String,
+    value: String,
+    onCommit: (String) -> Unit,
+    description: String? = null,
+    range: IntRange? = null
 ) {
-    var text by remember(value) { mutableStateOf(value.toString()) }
-    val focus = LocalFocusManager.current
-    val parsed = text.toIntOrNull()
-    val valid = parsed != null && parsed in range
+    var text by remember(value) { mutableStateOf(value) }
+    val valid = range == null || text.toIntOrNull()?.let { it in range } == true
+    fun save() {
+        if (valid && text != value) onCommit(text)
+    }
     OutlinedTextField(
         value = text,
-        onValueChange = { text = it.filter { c -> c.isDigit() }.take(6) },
-        label = { Text(title) },
-        supportingText = { Text(description) },
+        onValueChange = { text = if (range == null) it else it.filter { c -> c.isDigit() }.take(6) },
+        label = { Text(label) },
+        supportingText = description?.let { { Text(it) } },
         singleLine = true,
         isError = !valid,
         keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Number,
+            keyboardType = if (range == null) KeyboardType.Text else KeyboardType.Number,
             imeAction = ImeAction.Done
         ),
-        keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+        keyboardActions = doneAndHide(::save),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .padding(bottom = 8.dp),
-        trailingIcon = {
-            if (valid && parsed != value) {
-                TextButton(onClick = { onValueChange(parsed!!) }) { Text(stringResource(R.string.btn_save)) }
-            }
-        }
+            .padding(bottom = 8.dp)
+            .onFocusChanged { if (!it.isFocused) save() }
     )
 }
 
@@ -579,13 +550,12 @@ private fun SettingChipField(
     value: String,
     presets: List<Pair<String, String>>,
     placeholder: String,
-    keyboard: KeyboardType = KeyboardType.Text,
+    keyboardType: KeyboardType = KeyboardType.Text,
     onValueChange: (String) -> Unit
 ) {
     val isPreset = presets.any { it.first == value }
     var editing by remember { mutableStateOf(false) }
     var text by remember(value) { mutableStateOf(if (isPreset) "" else value) }
-    val focus = LocalFocusManager.current
 
     ListItem(
         headlineContent = { Text(title) },
@@ -621,16 +591,15 @@ private fun SettingChipField(
                         singleLine = true,
                         label = { Text(placeholder) },
                         keyboardOptions = KeyboardOptions(
-                            keyboardType = keyboard,
+                            keyboardType = keyboardType,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(onDone = {
+                        keyboardActions = doneAndHide {
                             if (text.isNotBlank()) {
                                 onValueChange(text)
                                 editing = false
                             }
-                            focus.clearFocus()
-                        }),
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

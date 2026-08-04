@@ -635,6 +635,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         clearPin()
         audioRenderer.start()
         audioRenderer.setFormat(ct, spf)
+        if (!usingScreen) _setPlaying(true)
         if (!usingScreen && !_audioOnly.value) {
             // pure music streaming (not screen mirroring audio)
             onAudioOnly(true)
@@ -786,6 +787,10 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         _playing.value = true
         _updatePlaybackState()
         _refreshDacpPlayer()
+    }
+
+    override fun onAudioTeardown() {
+        _setPlaying(false)
     }
 
     override fun onDacpId(dacpId: String, activeRemote: String) {

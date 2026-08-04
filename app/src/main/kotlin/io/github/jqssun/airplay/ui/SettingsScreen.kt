@@ -158,13 +158,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
         SectionHeader(stringResource(R.string.section_display))
 
         SettingSwitch(
-            title = stringResource(R.string.setting_idle_preview),
-            description = stringResource(R.string.setting_idle_preview_desc),
-            checked = idlePreview,
-            onCheckedChange = { viewModel.setIdlePreview(it) }
-        )
-
-        SettingSwitch(
             title = stringResource(R.string.setting_auto_fullscreen),
             description = stringResource(R.string.setting_auto_fullscreen_desc),
             checked = autoFullscreen,
@@ -231,6 +224,13 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 description = stringResource(R.string.setting_keep_screen_on_desc),
                 checked = keepScreenOn,
                 onCheckedChange = { viewModel.setKeepScreenOn(it) }
+            )
+
+            SettingSwitch(
+                title = stringResource(R.string.setting_idle_preview),
+                description = stringResource(R.string.setting_idle_preview_desc),
+                checked = idlePreview,
+                onCheckedChange = { viewModel.setIdlePreview(it) }
             )
 
             SettingSwitch(

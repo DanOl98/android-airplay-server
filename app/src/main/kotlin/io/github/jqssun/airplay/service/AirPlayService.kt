@@ -167,6 +167,8 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
     private var mediaReceiver: BroadcastReceiver? = null
     private var volumeReceiver: BroadcastReceiver? = null
     private var _pendingVolEchoes = 0
+    // senders park volume at -30 as route closes; session must not leave device silenced
+    private var _preZeroIdx = -1
     @Volatile private var _senderFrac = -1f
     private var _volSyncTarget = -1f
     private var _volSyncHint = 0
@@ -287,6 +289,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
                 if (_connectionCount.value == 0) return
                 val target = idx.toFloat() / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
                 Log.d(TAG, "local volume $prev -> $idx, sync sender to $target")
+                _preZeroIdx = -1
                 val active = _volSyncTarget >= 0f
                 _volSyncTarget = target
                 _volSyncHint = if (idx > prev) 1 else -1
@@ -664,8 +667,10 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
                 return@post
             }
             val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            val cur = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
             val idx = (frac * max).roundToInt()
-            if (idx != audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)) {
+            _preZeroIdx = if (idx == 0) (if (_preZeroIdx < 0) cur else _preZeroIdx) else -1
+            if (idx != cur) {
                 _pendingVolEchoes++
                 audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, idx, 0)
             }
@@ -737,9 +742,16 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
             _durationMs.value = 0
             dacpController?.reset()
             _senderFrac = -1f
-            _mainHandler.post { _volSyncEnd() }
+            _mainHandler.post {
+                _volSyncEnd()
+                if (_preZeroIdx >= 0) {
+                    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, _preZeroIdx, 0)
+                    _preZeroIdx = -1
+                }
+            }
             mediaSession?.isActive = false
             _refreshDacpPlayer()
+            _updateMediaNotification()
         }
         log("Client disconnected (${_connectionCount.value})")
     }
@@ -812,6 +824,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
             _trackInfo.value = TrackInfo()
             _positionMs.value = 0
             _durationMs.value = 0
+            _updateMediaNotification()
             modeCallback?.invoke(false)
             log("Mirror mode")
         }

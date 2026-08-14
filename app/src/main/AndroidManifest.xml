@@ -32,18 +32,44 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AirPlayServer">
 
+        <!-- trampolino: apre l'interfaccia scelta nelle impostazioni -->
         <activity
-            android:name=".MainActivity"
+            android:name=".LauncherActivity"
             android:exported="true"
-            android:supportsPictureInPicture="true"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
-            android:launchMode="singleTop">
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:supportsPictureInPicture="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:launchMode="singleTop" />
+
+        <activity
+            android:name=".TvMainActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:launchMode="singleTop" />
+
+        <service
+            android:name=".HotkeyService"
+            android:exported="true"
+            android:label="AirPlay (remote hotkey)"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/hotkey_service" />
+        </service>
 
         <service
             android:name=".service.AirPlayService"

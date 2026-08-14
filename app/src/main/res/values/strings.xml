@@ -184,4 +184,7 @@
     <string name="debug_audio_glitch">Glitch: trim=%1$d drop=%2$d sil=%3$d ur=%4$d xrun=%5$d</string>
     <string name="debug_audio_decode">Decode: %1$s</string>
     <string name="debug_clients">Clients: %1$d</string>
+    <string name="hotkey_service_description">Opens the AirPlay app with a configurable remote-control key (long press or double press). Short presses of Mute/Volume keep working normally. Configure the key from the app settings.</string>
+    <string name="setting_tv_ui">TV interface</string>
+    <string name="setting_tv_ui_desc">Google TV styled interface, optimized for D-pad</string>
 </resources>

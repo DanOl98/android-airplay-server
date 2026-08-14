@@ -157,6 +157,22 @@ fun SettingsScreen(viewModel: MainViewModel) {
 
         SectionHeader(stringResource(R.string.section_display))
 
+        if (isTv()) {
+            val uiContext = LocalContext.current
+            SettingSwitch(
+                title = stringResource(R.string.setting_tv_ui),
+                description = stringResource(R.string.setting_tv_ui_desc),
+                checked = false,
+                onCheckedChange = {
+                    io.github.jqssun.airplay.UiVariant.setTvUi(uiContext, true)
+                    uiContext.startActivity(
+                        Intent(uiContext, io.github.jqssun.airplay.TvMainActivity::class.java)
+                    )
+                    (uiContext as? android.app.Activity)?.finish()
+                }
+            )
+        }
+
         SettingSwitch(
             title = stringResource(R.string.setting_auto_fullscreen),
             description = stringResource(R.string.setting_auto_fullscreen_desc),

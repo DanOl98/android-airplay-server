@@ -31,7 +31,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
-import io.github.jqssun.airplay.MainActivity
+import io.github.jqssun.airplay.UiVariant
 import io.github.jqssun.airplay.Prefs
 import io.github.jqssun.airplay.R
 import io.github.jqssun.airplay.realDisplaySize
@@ -1030,7 +1030,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
     }
 
     private fun _buildMediaNotification(): Notification {
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = UiVariant.launchIntent(this)
         val pi = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
         val info = _trackInfo.value
         val isAudio = _audioOnly.value && info.title.isNotEmpty()
@@ -1069,7 +1069,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
 
     private fun launchMainActivity() {
         Handler(Looper.getMainLooper()).post {
-            val launchIntent = Intent(this, MainActivity::class.java)
+            val launchIntent = UiVariant.launchIntent(this)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             try {
                 startActivity(launchIntent)

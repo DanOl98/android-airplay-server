@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
@@ -23,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,6 +37,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -88,6 +93,7 @@ fun TvRow(
     onAdjust: ((Int) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
+    val palette = LocalTvAccent.current
     var focused by remember { mutableStateOf(false) }
     val contentColor = if (focused) TvPalette.TextOnFocus else TvPalette.TextPrimary
     val dimColor = if (focused) TvPalette.TextOnFocus else TvPalette.TextSecondary
@@ -113,7 +119,7 @@ fun TvRow(
             interactionSource = remember { MutableInteractionSource() },
             indication = null
         ) { onClick?.invoke() ?: onAdjust?.invoke(1) }
-        .background(if (focused) TvPalette.FocusFill else TvPalette.Row, TvRowShape)
+        .background(if (focused) palette.focusFill else palette.row, TvRowShape)
         .padding(horizontal = 18.dp, vertical = 16.dp)
 
     Row(
@@ -164,18 +170,18 @@ fun TvRow(
                     onCheckedChange = null,
                     colors = if (focused) {
                         SwitchDefaults.colors(
-                            checkedThumbColor = TvPalette.FocusFill,
+                            checkedThumbColor = palette.focusFill,
                             checkedTrackColor = TvPalette.TextOnFocus,
                             uncheckedThumbColor = TvPalette.TextOnFocus,
-                            uncheckedTrackColor = TvPalette.FocusFill,
+                            uncheckedTrackColor = palette.focusFill,
                             uncheckedBorderColor = TvPalette.TextOnFocus
                         )
                     } else {
                         SwitchDefaults.colors(
                             checkedThumbColor = TvPalette.Surface,
-                            checkedTrackColor = TvPalette.Accent,
+                            checkedTrackColor = palette.accent,
                             uncheckedThumbColor = TvPalette.TextSecondary,
-                            uncheckedTrackColor = TvPalette.Row,
+                            uncheckedTrackColor = palette.row,
                             uncheckedBorderColor = TvPalette.TextSecondary
                         )
                     }
@@ -186,6 +192,74 @@ fun TvRow(
                 Text("›", color = dimColor, fontSize = 20.sp)
             }
         }
+    }
+}
+
+/**
+ * Pulsante tondo per i comandi di riproduzione: tinta della copertina a
+ * riposo, riempimento chiaro con icona scura quando ha il focus.
+ */
+@Composable
+fun TvIconButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
+    /** Il comando principale (play/pausa): pieno in tinta, si vede da lontano. */
+    primary: Boolean = false,
+) {
+    val palette = LocalTvAccent.current
+    var focused by remember { mutableStateOf(false) }
+
+    val background = when {
+        focused -> palette.focusFill
+        primary -> palette.accent
+        else -> palette.accent.copy(alpha = 0.30f)
+    }
+    val tint = if (focused || primary) TvPalette.TextOnFocus else TvPalette.TextPrimary
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .onFocusChanged { focused = it.isFocused }
+            .clip(CircleShape)
+            .background(background)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(size * 0.5f)
+        )
+    }
+}
+
+/** Barra di avanzamento sottile, senza pomello, in tinta con la copertina. */
+@Composable
+fun TvProgressBar(progress: Float, modifier: Modifier = Modifier) {
+    val palette = LocalTvAccent.current
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            // la parte non riprodotta segue la tinta della copertina: un grigio
+            // fisso stonerebbe sulle palette calde
+            .background(palette.accent.copy(alpha = 0.28f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(progress.coerceIn(0f, 1f))
+                .clip(RoundedCornerShape(3.dp))
+                .background(palette.accent)
+        )
     }
 }
 

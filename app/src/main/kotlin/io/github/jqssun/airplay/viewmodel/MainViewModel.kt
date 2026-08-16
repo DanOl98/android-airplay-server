@@ -104,7 +104,9 @@ class MainViewModel @Inject constructor(app: Application) : AndroidViewModel(app
     private val _videoResolution = MutableStateFlow("")
     val videoResolution: StateFlow<String> = _videoResolution.asStateFlow()
 
-    private val _serverName = MutableStateFlow(prefs.getString(Prefs.SERVER_NAME, Prefs.DEF_SERVER_NAME)!!)
+    private val _serverName = MutableStateFlow(
+        prefs.getString(Prefs.SERVER_NAME, null) ?: io.github.jqssun.airplay.defaultServerName(app)
+    )
     val serverName: StateFlow<String> = _serverName.asStateFlow()
 
     // settings

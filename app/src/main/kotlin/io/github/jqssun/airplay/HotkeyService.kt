@@ -50,6 +50,11 @@ class HotkeyService : AccessibilityService() {
     override fun onKeyEvent(event: KeyEvent): Boolean {
         Log.d(TAG, "onKeyEvent keyCode=${event.keyCode} action=${event.action} repeat=${event.repeatCount}")
 
+        // mentre l'utente sta scegliendo un nuovo tasto il servizio si fa da
+        // parte, altrimenti il tasto attuale verrebbe consumato (e in modalità
+        // "pressione singola" riaprirebbe pure l'app) invece di essere catturato
+        if (captureInProgress) return false
+
         if (!HotkeyConfig.isTriggerKey(this, event.keyCode)) return false
 
         lastTriggerKeyCode = event.keyCode
@@ -160,6 +165,11 @@ class HotkeyService : AccessibilityService() {
     override fun onInterrupt() {}
 
     companion object {
+        /** Impostato dalla UI mentre è attiva la cattura di un nuovo tasto. */
+        @Volatile
+        @JvmStatic
+        var captureInProgress: Boolean = false
+
         private const val TAG = "HotkeyService"
         private const val LONG_PRESS_MS = 600L
         private const val DOUBLE_PRESS_MS = 400L

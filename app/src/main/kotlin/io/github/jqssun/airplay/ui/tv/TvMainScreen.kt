@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -24,6 +25,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material.icons.filled.Fullscreen
@@ -40,11 +47,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.scale
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -52,10 +63,13 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,6 +78,8 @@ import io.github.jqssun.airplay.HotkeyConfig
 import io.github.jqssun.airplay.HotkeyService
 import io.github.jqssun.airplay.Prefs
 import io.github.jqssun.airplay.MainActivity
+import io.github.jqssun.airplay.R
+import io.github.jqssun.airplay.TvOptions
 import io.github.jqssun.airplay.UiVariant
 import io.github.jqssun.airplay.service.AirPlayService.ServerState
 import io.github.jqssun.airplay.ui.VideoSurfaceView
@@ -72,30 +88,36 @@ import kotlinx.coroutines.delay
 
 private enum class TvSection { MAIN, SETTINGS, LOGS }
 
+/** Quanto resta visibile il pannello richiamato durante la riproduzione. */
+private const val PANEL_AUTO_HIDE_MS = 6000L
+
 private val HOTKEY_PRESETS = listOf(
-    AndroidKeyEvent.KEYCODE_PROG_BLUE to "Tasto Blu",
-    AndroidKeyEvent.KEYCODE_PROG_RED to "Tasto Rosso",
-    AndroidKeyEvent.KEYCODE_PROG_GREEN to "Tasto Verde",
-    AndroidKeyEvent.KEYCODE_PROG_YELLOW to "Tasto Giallo",
-    AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE to "Play/Pausa",
-    AndroidKeyEvent.KEYCODE_VOLUME_MUTE to "Mute",
+    AndroidKeyEvent.KEYCODE_PROG_BLUE to R.string.tv_key_blue,
+    AndroidKeyEvent.KEYCODE_PROG_RED to R.string.tv_key_red,
+    AndroidKeyEvent.KEYCODE_PROG_GREEN to R.string.tv_key_green,
+    AndroidKeyEvent.KEYCODE_PROG_YELLOW to R.string.tv_key_yellow,
+    AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE to R.string.tv_key_play_pause,
+    AndroidKeyEvent.KEYCODE_VOLUME_MUTE to R.string.tv_key_mute,
 )
 
-private fun modeLabel(mode: String): String = when (mode) {
-    HotkeyConfig.MODE_SINGLE_PRESS -> "Pressione singola"
-    HotkeyConfig.MODE_DOUBLE_PRESS -> "Doppia pressione"
-    else -> "Pressione lunga"
-}
+@Composable
+private fun modeLabel(mode: String): String = stringResource(
+    when (mode) {
+        HotkeyConfig.MODE_SINGLE_PRESS -> R.string.tv_gesture_single
+        HotkeyConfig.MODE_DOUBLE_PRESS -> R.string.tv_gesture_double
+        else -> R.string.tv_gesture_long
+    }
+)
 
 /** Cosa succede alla pressione breve con il tasto e il gesto scelti. */
-private fun shortPressNote(keycode: Int, mode: String): String = when {
-    mode == HotkeyConfig.MODE_SINGLE_PRESS ->
-        "Il tasto sarà riservato all'app"
-    HotkeyService.canReEmit(keycode) ->
-        "La pressione breve continua a funzionare normalmente"
-    else ->
-        "Tasto lasciato nativo: il gesto attiverà anche la sua funzione"
-}
+@Composable
+private fun shortPressNote(keycode: Int, mode: String): String = stringResource(
+    when {
+        mode == HotkeyConfig.MODE_SINGLE_PRESS -> R.string.tv_shortpress_reserved
+        HotkeyService.canReEmit(keycode) -> R.string.tv_shortpress_kept
+        else -> R.string.tv_shortpress_native
+    }
+)
 
 @Composable
 fun TvMainScreen(
@@ -137,6 +159,16 @@ fun TvMainScreen(
         )
     }
 
+    // il pannello prende i colori dalla copertina solo mentre suona qualcosa
+    val track by viewModel.trackInfo.collectAsState()
+    val themeCover = track.coverArt.takeIf {
+        audioOnly && connections > 0 && state == ServerState.RUNNING
+    }
+    val accent = rememberCoverAccent(themeCover)
+
+    val optionsContext = LocalContext.current
+    var showVolume by remember { mutableStateOf(TvOptions.showVolume(optionsContext)) }
+
     when {
         videoPlaybackActive || videoSessionPending -> {
             TvVideoPlayer(viewModel)
@@ -148,19 +180,26 @@ fun TvMainScreen(
                 contentAlignment = Alignment.Center
             ) { video() }
         }
-        else -> {
-            TvPanelLayout(
-                viewModel = viewModel,
-                section = section,
-                onSectionChange = { section = it },
-                video = video,
-                onFullscreen = { fullscreen = true },
-                serverName = serverName,
-                state = state,
-                connections = connections,
-                mirroringActive = mirroringActive,
-                audioOnly = audioOnly
-            )
+        else -> CompositionLocalProvider(LocalTvAccent provides accent) {
+            TvBlurredCoverBackground(themeCover) {
+                TvPanelLayout(
+                    viewModel = viewModel,
+                    section = section,
+                    onSectionChange = { section = it },
+                    video = video,
+                    onFullscreen = { fullscreen = true },
+                    serverName = serverName,
+                    state = state,
+                    connections = connections,
+                    mirroringActive = mirroringActive,
+                    audioOnly = audioOnly,
+                    showVolume = showVolume,
+                    onShowVolumeChange = {
+                        showVolume = it
+                        TvOptions.setShowVolume(optionsContext, it)
+                    }
+                )
+            }
         }
     }
 
@@ -172,7 +211,11 @@ fun TvMainScreen(
                     .padding(horizontal = 48.dp, vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Codice AirPlay", color = TvPalette.TextSecondary, fontSize = 16.sp)
+                Text(
+                    stringResource(R.string.dialog_pin_title),
+                    color = TvPalette.TextSecondary,
+                    fontSize = 16.sp
+                )
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = pin ?: "",
@@ -182,9 +225,57 @@ fun TvMainScreen(
                     letterSpacing = 8.sp
                 )
                 Spacer(Modifier.height(16.dp))
-                TvRow(label = "OK", onClick = { viewModel.dismissPin() })
+                TvRow(
+                    label = stringResource(R.string.btn_ok),
+                    onClick = { viewModel.dismissPin() }
+                )
             }
         }
+    }
+}
+
+/**
+ * Copertina sfocata come sfondo del pannello. La leggibilità è garantita da
+ * tre livelli: la copertina viene ridotta a pochi pixel (sfocatura che non
+ * dipende dall'API), poi sfocata davvero dove disponibile, infine coperta da
+ * una velatura scura. Senza copertina resta lo sfondo piatto di sempre.
+ */
+@Composable
+private fun TvBlurredCoverBackground(
+    cover: Bitmap?,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier = Modifier.fillMaxSize().background(TvPalette.Background)) {
+        if (cover != null && !cover.isRecycled) {
+            val tiny = remember(cover) {
+                runCatching { cover.scale(48, 48, filter = true) }.getOrNull()
+            }
+            if (tiny != null) {
+                Image(
+                    bitmap = tiny.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(56.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                )
+            }
+            // velatura: senza questa il testo chiaro sparirebbe sulle copertine chiare
+            val scrim = LocalTvAccent.current.scrim
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Black.copy(alpha = scrim),
+                                Color.Black.copy(alpha = (scrim + 0.12f).coerceAtMost(0.85f)),
+                            )
+                        )
+                    )
+            )
+        }
+        content()
     }
 }
 
@@ -200,26 +291,73 @@ private fun TvPanelLayout(
     connections: Int,
     mirroringActive: Boolean,
     audioOnly: Boolean,
+    showVolume: Boolean,
+    onShowVolumeChange: (Boolean) -> Unit,
 ) {
     val idlePreview by viewModel.idlePreview.collectAsState()
+    val nowPlaying = state == ServerState.RUNNING && audioOnly && connections > 0
 
+    // durante la riproduzione il pannello sparisce e la copertina si prende
+    // tutto lo schermo; → (o ↑/MENU) lo richiama, e si rinasconde da solo
+    var panelRevealed by remember { mutableStateOf(false) }
+    var revealTick by remember { mutableIntStateOf(0) }
+    val panelShown = !nowPlaying || panelRevealed
+    val immersive = nowPlaying && !panelRevealed
+
+    LaunchedEffect(nowPlaying) { if (!nowPlaying) panelRevealed = false }
+    LaunchedEffect(panelRevealed, revealTick, section, nowPlaying) {
+        if (panelRevealed && nowPlaying && section == TvSection.MAIN) {
+            delay(PANEL_AUTO_HIDE_MS)
+            panelRevealed = false
+        }
+    }
+    if (nowPlaying && panelRevealed && section == TvSection.MAIN) {
+        BackHandler { panelRevealed = false }
+    }
+
+    // niente fondo opaco qui: lo sfondo (piatto o copertina sfocata) è già
+    // dipinto da TvBlurredCoverBackground, coprirlo lo annullerebbe
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvPalette.Background)
+            .onPreviewKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown || !nowPlaying) {
+                    return@onPreviewKeyEvent false
+                }
+                when (e.key.nativeKeyCode) {
+                    AndroidKeyEvent.KEYCODE_DPAD_RIGHT,
+                    AndroidKeyEvent.KEYCODE_DPAD_UP,
+                    AndroidKeyEvent.KEYCODE_MENU -> {
+                        if (!panelRevealed) {
+                            panelRevealed = true
+                            true // il tasto serve solo a richiamare il pannello
+                        } else {
+                            revealTick++
+                            false
+                        }
+                    }
+                    else -> {
+                        if (panelRevealed) revealTick++
+                        false
+                    }
+                }
+            }
             .padding(horizontal = 40.dp, vertical = 28.dp)
     ) {
-        // area anteprima / stato
+        // area anteprima / stato: durante la riproduzione niente riquadro, così
+        // copertina e comandi galleggiano sullo sfondo sfocato senza interromperlo
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
                 .clip(TvPanelShape)
-                .background(TvPalette.Surface),
+                .background(
+                    if (nowPlaying) Color.Transparent else LocalTvAccent.current.surface
+                ),
             contentAlignment = Alignment.Center
         ) {
-            if (state == ServerState.RUNNING && audioOnly && connections > 0) {
-                TvNowPlaying(viewModel)
+            if (nowPlaying) {
+                TvNowPlaying(viewModel, showVolume, immersive)
             } else {
                 if (state == ServerState.RUNNING && (mirroringActive || idlePreview)) {
                     video()
@@ -234,18 +372,20 @@ private fun TvPanelLayout(
                         )
                         Spacer(Modifier.height(14.dp))
                         Text(
-                            text = when (state) {
-                                ServerState.STOPPED -> "Server fermo"
-                                ServerState.RUNNING -> "In attesa di connessione…"
-                                ServerState.ERROR -> "Errore di avvio del server"
-                            },
+                            text = stringResource(
+                                when (state) {
+                                    ServerState.STOPPED -> R.string.server_stopped
+                                    ServerState.RUNNING -> R.string.waiting_for_connection
+                                    ServerState.ERROR -> R.string.error_starting_server
+                                }
+                            ),
                             color = TvPalette.TextSecondary,
                             fontSize = 16.sp
                         )
                         if (state == ServerState.RUNNING) {
                             Spacer(Modifier.height(6.dp))
                             Text(
-                                text = "Cerca “$serverName” dal tuo iPhone/iPad/Mac",
+                                text = stringResource(R.string.tv_find_server, serverName),
                                 color = TvPalette.TextSecondary.copy(alpha = 0.7f),
                                 fontSize = 13.sp
                             )
@@ -254,6 +394,8 @@ private fun TvPanelLayout(
                 }
             }
         }
+
+        if (!panelShown) return@Row
 
         Spacer(Modifier.width(28.dp))
 
@@ -269,7 +411,7 @@ private fun TvPanelLayout(
                 )
                 TvSection.SETTINGS -> {
                     BackHandler { onSectionChange(TvSection.MAIN) }
-                    TvSettingsSection(viewModel)
+                    TvSettingsSection(viewModel, showVolume, onShowVolumeChange)
                 }
                 TvSection.LOGS -> {
                     BackHandler { onSectionChange(TvSection.MAIN) }
@@ -294,17 +436,18 @@ private fun ColumnScope.TvMainSection(
     val serverFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { serverFocus.requestFocus() } }
 
-    TvPanelTitle("AirPlay", serverName)
+    TvPanelTitle(stringResource(R.string.tv_panel_title), serverName)
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
         TvRow(
-            label = "Server",
+            label = stringResource(R.string.section_server),
             icon = if (state == ServerState.RUNNING) Icons.Default.Stop else Icons.Default.PlayArrow,
             value = when (state) {
                 ServerState.RUNNING ->
-                    if (connections > 0) "Attivo · $connections" else "Attivo"
-                ServerState.ERROR -> "Errore"
-                ServerState.STOPPED -> "Fermo"
+                    if (connections > 0) stringResource(R.string.tv_status_active_count, connections)
+                    else stringResource(R.string.tv_status_active)
+                ServerState.ERROR -> stringResource(R.string.error_label)
+                ServerState.STOPPED -> stringResource(R.string.stopped_label)
             },
             valueColor = when (state) {
                 ServerState.RUNNING -> TvPalette.Positive
@@ -318,35 +461,35 @@ private fun ColumnScope.TvMainSection(
         )
         if (mirroringActive) {
             TvRow(
-                label = "Schermo intero",
+                label = stringResource(R.string.tv_fullscreen),
                 icon = Icons.Default.Fullscreen,
                 showChevron = true,
                 onClick = onFullscreen
             )
         }
         TvRow(
-            label = "Log",
+            label = stringResource(R.string.tab_logs),
             icon = Icons.AutoMirrored.Filled.Article,
             showChevron = true,
             onClick = onOpenLogs
         )
         TvRow(
-            label = "Impostazioni",
+            label = stringResource(R.string.tab_settings),
             icon = Icons.Default.Settings,
             showChevron = true,
             onClick = onOpenSettings
         )
     }
 
-    TvHint("OK seleziona  •  BACK esci")
+    TvHint(stringResource(R.string.tv_hint_main))
 }
 
-private val ADAPTIVE_STEP_NAMES = listOf(
-    "min latenza", "bassa", "media", "alta", "max stabilità"
-)
-
 @Composable
-private fun TvSettingsSection(viewModel: MainViewModel) {
+private fun TvSettingsSection(
+    viewModel: MainViewModel,
+    showVolume: Boolean,
+    onShowVolumeChange: (Boolean) -> Unit,
+) {
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -400,6 +543,12 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
         }
     }
 
+    // il servizio hotkey non deve filtrare nulla mentre si sceglie il tasto
+    DisposableEffect(captureMode) {
+        HotkeyService.captureInProgress = captureMode
+        onDispose { HotkeyService.captureInProgress = false }
+    }
+
     var rootModifier: Modifier = Modifier
     if (captureMode) {
         rootModifier = rootModifier.onPreviewKeyEvent { e ->
@@ -422,7 +571,10 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
     }
 
     Column(modifier = rootModifier) {
-        TvPanelTitle("Impostazioni", "Server, hotkey e interfaccia")
+        TvPanelTitle(
+            stringResource(R.string.tab_settings),
+            stringResource(R.string.tv_settings_subtitle)
+        )
 
         Column(
             modifier = Modifier
@@ -431,16 +583,18 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // ---------- Hotkey ----------
-            TvSectionLabel("Hotkey telecomando")
+            TvSectionLabel(stringResource(R.string.tv_section_hotkey))
             Text(
-                text = if (serviceEnabled) "● Servizio hotkey attivo"
-                    else "● Servizio non attivo — abilitalo in Accessibilità",
+                text = stringResource(
+                    if (serviceEnabled) R.string.tv_hotkey_service_active
+                    else R.string.tv_hotkey_service_inactive
+                ),
                 color = if (serviceEnabled) TvPalette.Positive else TvPalette.Negative,
                 fontSize = 13.sp,
                 modifier = Modifier.padding(start = 14.dp, bottom = 4.dp)
             )
             TvRow(
-                label = "Impostazioni Accessibilità",
+                label = stringResource(R.string.tv_accessibility_settings),
                 icon = Icons.Default.Settings,
                 showChevron = true,
                 onClick = {
@@ -453,7 +607,7 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
                 }
             )
             TvRow(
-                label = "Tasto",
+                label = stringResource(R.string.tv_hotkey_key),
                 icon = Icons.Default.Keyboard,
                 sublabel = shortPressNote(hotkeyKeycode, hotkeyMode),
                 picker = true,
@@ -467,11 +621,14 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
                 }
             )
             TvRow(
-                label = if (captureMode) "Premi ora un tasto… (BACK annulla)" else "Cattura un altro tasto…",
+                label = stringResource(
+                    if (captureMode) R.string.tv_hotkey_capture_active
+                    else R.string.tv_hotkey_capture
+                ),
                 onClick = { captureMode = true }
             )
             TvRow(
-                label = "Gesto",
+                label = stringResource(R.string.tv_hotkey_gesture),
                 picker = true,
                 value = modeLabel(hotkeyMode),
                 onAdjust = { delta ->
@@ -484,10 +641,16 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
             )
 
             // ---------- Interfaccia ----------
-            TvSectionLabel("Interfaccia")
+            TvSectionLabel(stringResource(R.string.tv_section_interface))
             TvRow(
-                label = "Interfaccia TV",
-                sublabel = "Disattiva per tornare all'interfaccia classica",
+                label = stringResource(R.string.tv_show_volume),
+                sublabel = stringResource(R.string.tv_show_volume_desc),
+                checked = showVolume,
+                onClick = { onShowVolumeChange(!showVolume) }
+            )
+            TvRow(
+                label = stringResource(R.string.setting_tv_ui),
+                sublabel = stringResource(R.string.tv_ui_switch_desc),
                 checked = true,
                 onClick = {
                     UiVariant.setTvUi(context, false)
@@ -497,35 +660,35 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
             )
 
             // ---------- Server ----------
-            TvSectionLabel("Server")
+            TvSectionLabel(stringResource(R.string.section_server))
             TvTextInputRow(
-                label = "Nome server",
+                label = stringResource(R.string.setting_server_name),
                 value = serverName,
                 numeric = false,
                 onCommit = { if (it.isNotBlank()) viewModel.setServerName(it.trim()) }
             )
             TvTextInputRow(
-                label = "Porta",
+                label = stringResource(R.string.setting_server_port),
                 value = serverPort.toString(),
                 numeric = true,
                 range = 1..65535,
                 onCommit = { it.toIntOrNull()?.let { p -> viewModel.setServerPort(p) } }
             )
-            TvRow(label = "Avvio al boot", checked = bootAutoStart,
+            TvRow(label = stringResource(R.string.setting_boot_auto_start), checked = bootAutoStart,
                 onClick = { viewModel.setBootAutoStart(!bootAutoStart) })
-            TvRow(label = "Esegui in background", checked = runInBackground,
+            TvRow(label = stringResource(R.string.setting_run_in_background), checked = runInBackground,
                 onClick = { viewModel.setRunInBackground(!runInBackground) })
 
             // ---------- Connessione ----------
-            TvSectionLabel("Connessione")
-            TvRow(label = "Richiedi PIN", checked = requirePin,
+            TvSectionLabel(stringResource(R.string.section_connection))
+            TvRow(label = stringResource(R.string.setting_require_pin), checked = requirePin,
                 onClick = { viewModel.setRequirePin(!requirePin) })
-            TvRow(label = "Consenti nuove connessioni", checked = allowNewConn,
+            TvRow(label = stringResource(R.string.setting_allow_new_conn), checked = allowNewConn,
                 onClick = { viewModel.setAllowNewConn(!allowNewConn) })
             TvRow(
-                label = "Apri app alla connessione",
+                label = stringResource(R.string.setting_launch_on_connect),
                 sublabel = if (launchOnConnect && !hasOverlay)
-                    "Serve il permesso \"Mostra sopra le app\"" else null,
+                    stringResource(R.string.setting_launch_on_connect_no_permission) else null,
                 checked = launchOnConnect,
                 onClick = {
                     val enabling = !launchOnConnect
@@ -539,13 +702,14 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
             )
 
             // ---------- Schermo ----------
-            TvSectionLabel("Schermo")
-            TvRow(label = "Schermo intero automatico", checked = autoFullscreen,
+            TvSectionLabel(stringResource(R.string.section_display))
+            TvRow(label = stringResource(R.string.setting_auto_fullscreen), checked = autoFullscreen,
                 onClick = { viewModel.setAutoFullscreen(!autoFullscreen) })
             TvRow(
-                label = "Risoluzione",
+                label = stringResource(R.string.setting_resolution),
                 picker = true,
-                value = if (resolution == "auto") "Auto" else resolution,
+                value = if (resolution == "auto") stringResource(R.string.setting_resolution_auto)
+                    else resolution,
                 onAdjust = { delta ->
                     val options = listOf("auto", "3840x2160", "1920x1080", "1280x720")
                     val idx = options.indexOf(resolution).coerceAtLeast(0)
@@ -554,7 +718,7 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
                 }
             )
             TvRow(
-                label = "FPS massimi",
+                label = stringResource(R.string.setting_max_fps),
                 picker = true,
                 value = maxFps.toString(),
                 onAdjust = { delta ->
@@ -564,61 +728,65 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
                     viewModel.setMaxFps(options[next])
                 }
             )
-            TvRow(label = "Overscan", checked = overscanned,
+            TvRow(label = stringResource(R.string.setting_overscanned), checked = overscanned,
                 onClick = { viewModel.setOverscanned(!overscanned) })
 
             // ---------- Decodifica ----------
-            TvSectionLabel("Decodifica")
-            TvRow(label = "Codifica H265", checked = h265,
+            TvSectionLabel(stringResource(R.string.section_decode))
+            TvRow(label = stringResource(R.string.setting_h265), checked = h265,
                 onClick = { viewModel.setH265Enabled(!h265) })
-            TvRow(label = "Forza ALAC software", checked = forceSwAlac,
+            TvRow(label = stringResource(R.string.setting_sw_alac), checked = forceSwAlac,
                 onClick = { viewModel.setForceSwAlac(!forceSwAlac) })
 
             // ---------- Sviluppatore ----------
-            TvSectionLabel("Sviluppatore")
+            TvSectionLabel(stringResource(R.string.section_developer))
             TvRow(
-                label = "Opzioni sviluppatore",
-                sublabel = if (developerOptions) "Opzioni avanzate mostrate" else "Mostra opzioni avanzate",
+                label = stringResource(R.string.setting_developer_options),
+                sublabel = stringResource(
+                    if (developerOptions) R.string.tv_dev_options_shown
+                    else R.string.setting_developer_options_desc
+                ),
                 checked = developerOptions,
                 onClick = { viewModel.setDeveloperOptions(!developerOptions) }
             )
 
             if (developerOptions) {
-                TvRow(label = "Avvia server all'apertura", checked = autoStart,
+                TvRow(label = stringResource(R.string.setting_auto_start), checked = autoStart,
                     onClick = { viewModel.setAutoStart(!autoStart) })
-                TvRow(label = "Mantieni schermo acceso", checked = keepScreenOn,
+                TvRow(label = stringResource(R.string.setting_keep_screen_on), checked = keepScreenOn,
                     onClick = { viewModel.setKeepScreenOn(!keepScreenOn) })
-                TvRow(label = "Anteprima da fermo", checked = idlePreview,
+                TvRow(label = stringResource(R.string.setting_idle_preview), checked = idlePreview,
                     onClick = { viewModel.setIdlePreview(!idlePreview) })
-                TvRow(label = "Annuncia video", checked = advertiseVideo,
+                TvRow(label = stringResource(R.string.setting_advertise_video), checked = advertiseVideo,
                     onClick = { viewModel.setAdvertiseVideo(!advertiseVideo) })
-                TvRow(label = "Annuncia audio", checked = advertiseAudio,
+                TvRow(label = stringResource(R.string.setting_advertise_audio), checked = advertiseAudio,
                     onClick = { viewModel.setAdvertiseAudio(!advertiseAudio) })
-                TvRow(label = "ALAC", checked = alac,
+                TvRow(label = stringResource(R.string.setting_alac), checked = alac,
                     onClick = { viewModel.setAlacEnabled(!alac) })
-                TvRow(label = "AAC", checked = aac,
+                TvRow(label = stringResource(R.string.setting_aac), checked = aac,
                     onClick = { viewModel.setAacEnabled(!aac) })
-                TvRow(label = "Consenti frame drop", checked = keyAllowFrameDrop,
+                TvRow(label = stringResource(R.string.setting_key_allow_frame_drop), checked = keyAllowFrameDrop,
                     onClick = { viewModel.setKeyAllowFrameDrop(!keyAllowFrameDrop) })
-                TvRow(label = "Forza SDR", checked = enforceSdr,
+                TvRow(label = stringResource(R.string.setting_enforce_sdr), checked = enforceSdr,
                     onClick = { viewModel.setEnforceSdr(!enforceSdr) })
-                TvRow(label = "Priorità decoder realtime", checked = realtimeDecoderPriority,
+                TvRow(label = stringResource(R.string.setting_realtime_decoder_priority), checked = realtimeDecoderPriority,
                     onClick = { viewModel.setRealtimeDecoderPriority(!realtimeDecoderPriority) })
-                TvRow(label = "Operating rate hint", checked = operatingRateHint,
+                TvRow(label = stringResource(R.string.setting_operating_rate_hint), checked = operatingRateHint,
                     onClick = { viewModel.setOperatingRateHint(!operatingRateHint) })
-                TvRow(label = "Bassa latenza decoder", checked = lowLatency,
+                TvRow(label = stringResource(R.string.setting_low_latency), checked = lowLatency,
                     onClick = { viewModel.setLowLatency(!lowLatency) })
-                TvRow(label = "Scheduled output buffer release", checked = scheduledOutputBufferRelease,
+                TvRow(label = stringResource(R.string.setting_scheduled_output_buffer_release),
+                    checked = scheduledOutputBufferRelease,
                     onClick = { viewModel.setScheduledOutputBufferRelease(!scheduledOutputBufferRelease) })
 
                 // ritardo audio: toggle + valore ±50 ms (0..1000)
-                TvRow(label = "Ritardo audio", checked = audioLatencyMs >= 0,
+                TvRow(label = stringResource(R.string.setting_audio_delay), checked = audioLatencyMs >= 0,
                     onClick = { viewModel.setAudioLatencyMs(if (audioLatencyMs >= 0) -1 else 250) })
                 if (audioLatencyMs >= 0) {
                     TvRow(
-                        label = "  Valore",
+                        label = stringResource(R.string.tv_audio_delay_value),
                         picker = true,
-                        value = "$audioLatencyMs ms",
+                        value = stringResource(R.string.audio_delay_value, audioLatencyMs),
                         onAdjust = { delta ->
                             viewModel.setAudioLatencyMs((audioLatencyMs + delta * 50).coerceIn(0, 1000))
                         }
@@ -626,22 +794,27 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
                 }
 
                 // buffer audio: automatico (step adattivo) oppure cushion fisso
-                TvRow(label = "Buffer audio automatico", checked = audioAutoBuffer,
+                TvRow(label = stringResource(R.string.setting_audio_auto_buffer), checked = audioAutoBuffer,
                     onClick = { viewModel.setAudioAutoBuffer(!audioAutoBuffer) })
                 if (audioAutoBuffer) {
                     val maxStep = Prefs.ADAPTIVE_PERCENTILES.size - 1
                     val step = audioAdaptiveStep.coerceIn(0, maxStep)
+                    val stepNames = stringArrayResource(R.array.audio_adaptive_step_names)
                     TvRow(
-                        label = "  Stabilità buffer",
+                        label = stringResource(R.string.tv_audio_buffer_stability),
                         picker = true,
-                        value = "${Prefs.ADAPTIVE_PERCENTILES[step]}% · ${ADAPTIVE_STEP_NAMES[step]}",
+                        value = stringResource(
+                            R.string.audio_adaptive_value,
+                            Prefs.ADAPTIVE_PERCENTILES[step],
+                            stepNames[step]
+                        ),
                         onAdjust = { delta ->
                             viewModel.setAudioAdaptiveStep((audioAdaptiveStep + delta).coerceIn(0, maxStep))
                         }
                     )
                 } else {
                     TvTextInputRow(
-                        label = "  Cushion buffer (ms)",
+                        label = stringResource(R.string.setting_audio_cushion_ms),
                         value = audioCushionMs.toString(),
                         numeric = true,
                         range = 1..1000,
@@ -650,22 +823,22 @@ private fun TvSettingsSection(viewModel: MainViewModel) {
                 }
 
                 TvTextInputRow(
-                    label = "Oboe buffer frames",
+                    label = stringResource(R.string.setting_oboe_buffer_frames),
                     value = oboeBufferFrames.toString(),
                     numeric = true,
                     range = 0..8192,
                     onCommit = { it.toIntOrNull()?.let { v -> viewModel.setOboeBufferFrames(v) } }
                 )
-                TvRow(label = "Overlay debug", checked = debugEnabled,
+                TvRow(label = stringResource(R.string.setting_debug_overlay), checked = debugEnabled,
                     onClick = { viewModel.setDebugEnabled(!debugEnabled) })
-                TvRow(label = "Log benchmark", checked = benchmarkLog,
+                TvRow(label = stringResource(R.string.setting_benchmark_log), checked = benchmarkLog,
                     onClick = { viewModel.setBenchmarkLog(!benchmarkLog) })
             }
 
             Spacer(Modifier.height(8.dp))
         }
 
-        TvHint("OK cambia  •  ←/→ scegli  •  BACK indietro")
+        TvHint(stringResource(R.string.tv_hint_settings))
     }
 }
 
@@ -727,10 +900,13 @@ private fun TvTextInputRow(
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(Modifier.weight(1f)) {
-                        TvRow(label = "Annulla", onClick = { showDialog = false })
+                        TvRow(
+                            label = stringResource(R.string.tv_cancel),
+                            onClick = { showDialog = false }
+                        )
                     }
                     Box(Modifier.weight(1f)) {
-                        TvRow(label = "OK", onClick = commit)
+                        TvRow(label = stringResource(R.string.btn_ok), onClick = commit)
                     }
                 }
             }
@@ -749,7 +925,10 @@ private fun TvLogsSection(viewModel: MainViewModel) {
     }
 
     Column {
-        TvPanelTitle("Log", "${logs.size} righe")
+        TvPanelTitle(
+            stringResource(R.string.tab_logs),
+            stringResource(R.string.tv_logs_lines, logs.size)
+        )
 
         Box(
             modifier = Modifier
@@ -774,30 +953,70 @@ private fun TvLogsSection(viewModel: MainViewModel) {
         }
 
         Spacer(Modifier.height(10.dp))
-        TvRow(label = "Cancella log", onClick = { viewModel.clearLogs() })
-        TvHint("BACK indietro")
+        TvRow(
+            label = stringResource(R.string.tv_logs_clear),
+            onClick = { viewModel.clearLogs() }
+        )
+        TvHint(stringResource(R.string.tv_hint_back))
     }
 }
 
 @Composable
-private fun TvNowPlaying(viewModel: MainViewModel) {
+private fun TvNowPlaying(
+    viewModel: MainViewModel,
+    showVolume: Boolean,
+    immersive: Boolean,
+) {
     val track by viewModel.trackInfo.collectAsState()
+    val player = viewModel.dacpPlayer
+    val playFocus = remember { FocusRequester() }
+
+    // a tutto schermo i comandi sono l'unica cosa navigabile: il focus va lì
+    LaunchedEffect(immersive) {
+        if (immersive) {
+            delay(120)
+            runCatching { playFocus.requestFocus() }
+        }
+    }
+
+    var playing by remember { mutableStateOf(true) }
+    var positionMs by remember { mutableLongStateOf(0L) }
+    var durationMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(player) {
+        while (player != null) {
+            playing = player.playWhenReady
+            positionMs = player.currentPosition.coerceAtLeast(0L)
+            durationMs = player.duration.takeIf { it > 0 } ?: 0L
+            delay(500)
+        }
+    }
+
+    val contentWidth = if (immersive) 520.dp else 300.dp
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(24.dp)
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
+        // senza i tasti volume avanza spazio: la copertina si prende quello
         Box(
             modifier = Modifier
-                .size(220.dp)
+                .size(
+                    when {
+                        immersive && !showVolume -> 340.dp
+                        immersive -> 300.dp
+                        showVolume -> 200.dp
+                        else -> 260.dp
+                    }
+                )
                 .clip(RoundedCornerShape(16.dp))
-                .background(TvPalette.Row),
+                .background(LocalTvAccent.current.row),
             contentAlignment = Alignment.Center
         ) {
             val art = track.coverArt
             if (art != null) {
                 Image(
                     bitmap = art.asImageBitmap(),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_cover_art),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
@@ -809,16 +1028,108 @@ private fun TvNowPlaying(viewModel: MainViewModel) {
                 )
             }
         }
-        Spacer(Modifier.height(18.dp))
+
+        Spacer(Modifier.height(16.dp))
+        // larghezza limitata: i titoli lunghi andrebbero a toccare i bordi
         Text(
-            text = track.title.ifEmpty { "In riproduzione" },
-            color = TvPalette.TextPrimary, fontSize = 18.sp,
+            text = track.title.ifEmpty { stringResource(R.string.tv_now_playing) },
+            color = TvPalette.TextPrimary,
+            fontSize = if (immersive) 22.sp else 18.sp,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 1, overflow = TextOverflow.Ellipsis
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = contentWidth)
         )
         if (track.artist.isNotEmpty()) {
-            Text(track.artist, color = TvPalette.TextSecondary, fontSize = 14.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                track.artist,
+                color = TvPalette.TextSecondary,
+                fontSize = if (immersive) 16.sp else 14.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = contentWidth)
+            )
+        }
+
+        if (durationMs > 0) {
+            Spacer(Modifier.height(14.dp))
+            TvProgressBar(
+                progress = positionMs.toFloat() / durationMs,
+                modifier = Modifier.width(contentWidth)
+            )
+            Spacer(Modifier.height(4.dp))
+            Row(modifier = Modifier.width(contentWidth)) {
+                Text(formatTvTime(positionMs), color = TvPalette.TextSecondary, fontSize = 12.sp)
+                Spacer(Modifier.weight(1f))
+                Text(formatTvTime(durationMs), color = TvPalette.TextSecondary, fontSize = 12.sp)
+            }
+        }
+
+        if (player != null) {
+            Spacer(Modifier.height(16.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TvIconButton(
+                    icon = Icons.Default.SkipPrevious,
+                    contentDescription = stringResource(R.string.cd_rewind),
+                    onClick = { player.seekToPrevious() }
+                )
+                TvIconButton(
+                    icon = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = stringResource(R.string.cd_play_pause),
+                    size = if (immersive) 72.dp else 60.dp,
+                    primary = true,
+                    modifier = Modifier.focusRequester(playFocus),
+                    onClick = {
+                        if (playing) player.pause() else player.play()
+                        playing = !playing
+                    }
+                )
+                TvIconButton(
+                    icon = Icons.Default.SkipNext,
+                    contentDescription = stringResource(R.string.cd_fast_forward),
+                    onClick = { player.seekToNext() }
+                )
+            }
+
+            if (showVolume) {
+            Spacer(Modifier.height(10.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TvIconButton(
+                    icon = Icons.AutoMirrored.Filled.VolumeDown,
+                    contentDescription = stringResource(R.string.cd_volume_down),
+                    size = 40.dp,
+                    onClick = { viewModel.audioVolumeDown() }
+                )
+                TvIconButton(
+                    icon = Icons.AutoMirrored.Filled.VolumeOff,
+                    contentDescription = stringResource(R.string.cd_mute),
+                    size = 40.dp,
+                    onClick = { viewModel.audioMuteToggle() }
+                )
+                TvIconButton(
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = stringResource(R.string.cd_volume_up),
+                    size = 40.dp,
+                    onClick = { viewModel.audioVolumeUp() }
+                )
+                }
+            }
+        }
+
+        if (immersive) {
+            Spacer(Modifier.height(18.dp))
+            Text(
+                text = stringResource(R.string.tv_hint_now_playing),
+                color = TvPalette.TextSecondary.copy(alpha = 0.8f),
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -936,7 +1247,7 @@ private fun TvVideoPlayer(viewModel: MainViewModel) {
                     }
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "OK pausa  •  ←/→ ±10s  •  BACK chiudi",
+                        stringResource(R.string.tv_hint_player),
                         color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp
                     )
                 }
@@ -945,8 +1256,9 @@ private fun TvVideoPlayer(viewModel: MainViewModel) {
     }
 }
 
+@Composable
 private fun hotkeyLabel(keycode: Int): String =
-    HOTKEY_PRESETS.firstOrNull { it.first == keycode }?.second
+    HOTKEY_PRESETS.firstOrNull { it.first == keycode }?.let { stringResource(it.second) }
         ?: AndroidKeyEvent.keyCodeToString(keycode).removePrefix("KEYCODE_")
 
 private fun canDrawOverlays(context: Context): Boolean =

@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Notifiche -->
+    <string name="notification_channel">Servizio AirPlay</string>
+    <string name="notification_title">Server AirPlay attivo</string>
+    <string name="notification_text">In attesa di connessioni AirPlay</string>
+    <string name="notification_pin_title">Codice AirPlay richiesto</string>
+    <string name="notification_pin_text">PIN: %1$s</string>
+    <string name="stop_service">Ferma</string>
+
+    <!-- Schede -->
+    <string name="tab_overview">Panoramica</string>
+    <string name="tab_logs">Log</string>
+    <string name="tab_settings">Impostazioni</string>
+
+    <!-- Panoramica -->
+    <string name="server_stopped">Server fermo</string>
+    <string name="waiting_for_connection">In attesa di connessione…</string>
+    <string name="waiting_for_playback">Avvia la riproduzione dal dispositivo…</string>
+    <string name="error_starting_server">Errore di avvio del server</string>
+    <string name="connected_count">%d connessi</string>
+    <string name="error_label">Errore</string>
+    <string name="stopped_label">Fermo</string>
+    <string name="btn_start">Avvia</string>
+    <string name="btn_stop">Ferma</string>
+    <string name="unknown_track">Sconosciuto</string>
+
+    <!-- Descrizioni per l'accessibilità -->
+    <string name="cd_pip">Picture-in-Picture</string>
+    <string name="cd_fullscreen">Schermo intero</string>
+    <string name="cd_exit_fullscreen">Esci da schermo intero</string>
+    <string name="cd_cover_art">Copertina</string>
+    <string name="cd_play_pause">Play/Pausa</string>
+    <string name="cd_rewind">Indietro</string>
+    <string name="cd_fast_forward">Avanti</string>
+    <string name="cd_volume_down">Abbassa volume</string>
+    <string name="cd_volume_up">Alza volume</string>
+    <string name="cd_mute">Muto</string>
+    <string name="cd_download">Scarica video</string>
+    <string name="cd_cancel_download">Annulla download</string>
+
+    <!-- Download video -->
+    <string name="download_saved">Salvato in %1$s</string>
+    <string name="download_failed">Download non riuscito</string>
+
+    <!-- Gesti del player -->
+    <string name="gesture_seek_seconds">%1$d secondi</string>
+    <string name="seconds_short">%1$ds</string>
+    <string name="select_playback_speed">Velocità di riproduzione</string>
+    <string name="cd_reset_speed">Ripristina velocità</string>
+    <string name="skip_silence">Salta i silenzi</string>
+
+    <!-- Controlli del player -->
+    <string name="cd_back">Indietro</string>
+    <string name="cd_copy_url">Copia URL del video</string>
+    <string name="cd_rotate">Ruota schermo</string>
+    <string name="cd_lock_controls">Blocca controlli</string>
+    <string name="cd_unlock_controls">Sblocca controlli</string>
+    <string name="scale_best_fit">Adatta</string>
+    <string name="scale_stretch">Allarga</string>
+    <string name="scale_crop">Ritaglia</string>
+    <string name="scale_hundred_percent">100%</string>
+
+    <!-- Finestre di dialogo -->
+    <string name="dialog_pin_title">Codice AirPlay</string>
+    <string name="btn_ok">OK</string>
+
+    <!-- Schermata log -->
+    <string name="btn_export">Esporta</string>
+    <string name="btn_clear">Cancella</string>
+    <string name="export_logs_chooser_title">Esporta i log</string>
+
+    <!-- Sezioni impostazioni -->
+    <string name="section_server">Server</string>
+    <string name="section_connection">Connessione</string>
+    <string name="section_display">Schermo</string>
+    <string name="section_decode">Decodifica</string>
+    <string name="section_developer">Sviluppatore</string>
+
+    <!-- Impostazioni: server -->
+    <string name="setting_server_name">Nome server</string>
+    <string name="setting_server_port">Porta</string>
+    <string name="setting_auto_start">Avvia il server all\'apertura</string>
+    <string name="setting_auto_start_desc">Avvia il server AirPlay quando si apre l\'app</string>
+    <string name="setting_boot_auto_start">Avvia il server al boot</string>
+    <string name="setting_boot_auto_start_desc">Avvia il server AirPlay all\'accensione del dispositivo</string>
+    <string name="setting_run_in_background">Esegui in background</string>
+    <string name="setting_run_in_background_desc">Mantieni il server attivo dopo aver chiuso l\'app</string>
+
+    <!-- Impostazioni: connessione -->
+    <string name="setting_require_pin">Richiedi PIN (beta)</string>
+    <string name="setting_require_pin_desc">Richiedi un PIN di 4 cifre a ogni nuova connessione</string>
+    <string name="setting_allow_new_conn">Consenti nuove connessioni</string>
+    <string name="setting_allow_new_conn_desc">Disconnetti il client attuale quando ne arriva uno nuovo</string>
+
+    <!-- Impostazioni: schermo -->
+    <string name="setting_idle_preview">Anteprima da fermo</string>
+    <string name="setting_idle_preview_desc">Mostra la superficie video mentre si attende una connessione</string>
+    <string name="setting_auto_fullscreen">Schermo intero automatico</string>
+    <string name="setting_auto_fullscreen_desc">Passa a schermo intero quando un client si connette</string>
+    <string name="setting_keep_screen_on">Mantieni schermo acceso</string>
+    <string name="setting_keep_screen_on_desc">Impedisci lo spegnimento mentre un client è connesso</string>
+    <string name="setting_advertise_video">Annuncia il supporto AirPlay video</string>
+    <string name="setting_advertise_video_desc">Se disattivo, i video vengono trasmessi come solo audio</string>
+    <string name="setting_advertise_audio">Annuncia il supporto AirPlay audio</string>
+    <string name="setting_advertise_audio_desc">Se disattivo, il dispositivo serve solo per il mirroring e non compare nei lettori musicali</string>
+    <string name="setting_alac">Annuncia il codec ALAC</string>
+    <string name="setting_alac_desc">Offre ALAC nel record mDNS; usato per lo streaming musicale</string>
+    <string name="setting_aac">Annuncia il codec AAC</string>
+    <string name="setting_aac_desc">Offre AAC-ELD/AAC-LC nel record mDNS; usato per l\'audio del mirroring</string>
+    <string name="setting_launch_on_connect">Apri l\'app alla connessione</string>
+    <string name="setting_launch_on_connect_desc">Mostra la schermata quando un client si connette</string>
+    <string name="setting_launch_on_connect_no_permission">Serve il permesso «Mostra sopra le app»</string>
+    <string name="setting_resolution">Risoluzione</string>
+    <string name="setting_resolution_desc">Risoluzione video annunciata ai client</string>
+    <string name="setting_resolution_placeholder">[L]x[A]</string>
+    <string name="setting_resolution_auto">Auto</string>
+    <string name="setting_resolution_width">Larghezza</string>
+    <string name="setting_resolution_height">Altezza</string>
+    <string name="setting_max_fps">FPS massimi</string>
+    <string name="setting_max_fps_desc">Frame rate massimo annunciato ai client</string>
+    <string name="setting_max_fps_placeholder">FPS</string>
+    <string name="setting_overscanned">Overscan</string>
+    <string name="setting_overscanned_desc">Aggiunge un bordo di pixel per schermi con overscan</string>
+    <string name="chip_custom">Personalizzata</string>
+    <string name="chip_device_portrait">Verticale</string>
+    <string name="chip_device_landscape">Orizzontale</string>
+
+    <!-- Impostazioni: decodifica -->
+    <string name="setting_h265">H.265 (HEVC)</string>
+    <string name="setting_h265_desc">Abilita la decodifica H.265 se il dispositivo la supporta</string>
+    <string name="setting_enforce_sdr">Forza SDR</string>
+    <string name="setting_enforce_sdr_desc">Marca il video come SDR limitato; disattiva per lasciar passare le sorgenti HDR</string>
+    <string name="setting_sw_alac">Forza il decoder ALAC software</string>
+    <string name="setting_sw_alac_desc">Usa sempre il decoder ALAC software invece di quello hardware; può influire sulla latenza audio</string>
+
+    <!-- Impostazioni: sviluppatore -->
+    <string name="setting_developer_options">Opzioni sviluppatore</string>
+    <string name="setting_developer_options_desc">Mostra le opzioni avanzate</string>
+    <string name="setting_key_allow_frame_drop">Consenti frame drop</string>
+    <string name="setting_key_allow_frame_drop_desc">Permette ai decoder video di scartare frame internamente per stare al passo (Android 10+)</string>
+    <string name="setting_realtime_decoder_priority">Priorità decoder realtime</string>
+    <string name="setting_realtime_decoder_priority_desc">Richiede scheduling realtime per i decoder audio e video</string>
+    <string name="setting_low_latency">Bassa latenza</string>
+    <string name="setting_low_latency_desc">Usa decodifica audio e video a bassa latenza; consuma più CPU ed energia</string>
+    <string name="setting_operating_rate_hint">Operating rate hint</string>
+    <string name="setting_operating_rate_hint_desc">Richiede la massima velocità operativa per il decoder video</string>
+    <string name="setting_scheduled_output_buffer_release">Frame pacing allineato</string>
+    <string name="setting_scheduled_output_buffer_release_desc">Programma ogni frame decodificato sul VSYNC corrispondente al suo timestamp</string>
+    <string name="setting_audio_delay">Ritardo audio personalizzato</string>
+    <string name="setting_audio_delay_desc">Imposta una latenza audio personalizzata comunicata al client</string>
+    <string name="audio_delay_value">%d ms</string>
+    <string name="setting_audio_auto_buffer">Buffer audio automatico</string>
+    <string name="setting_audio_auto_buffer_desc">Regola il buffer audio software in base alla rete e alle prestazioni del dispositivo; il cursore decide quanto jitter può assorbire</string>
+    <string name="audio_adaptive_value">%1$d%% (%2$s)</string>
+    <string-array name="audio_adaptive_step_names">
+        <item>Latenza minima</item>
+        <item>Bassa latenza</item>
+        <item>Bilanciato</item>
+        <item>Più stabile</item>
+        <item>Massima stabilità</item>
+    </string-array>
+    <string name="setting_audio_cushion_ms">Buffer audio software (ms)</string>
+    <string name="setting_audio_cushion_ms_desc">Buffer per assorbire il jitter di rete e del decoder: più corto significa meno latenza, più lungo meno interruzioni</string>
+    <string name="setting_oboe_buffer_frames">Buffer hardware (frame)</string>
+    <string name="setting_oboe_buffer_frames_desc">Buffer tra l\'app e il dispositivo audio, per assorbire solo il jitter di scheduling. Lascia 0 per la dimensione automatica.</string>
+    <string name="setting_debug_overlay">Overlay di debug</string>
+    <string name="setting_debug_overlay_desc">Mostra le statistiche sul video: codec, FPS, bitrate, jitter, frame, scarti</string>
+    <string name="setting_benchmark_log">Log di debug</string>
+    <string name="setting_benchmark_log_desc">Scrive le statistiche nel logcat: codec, FPS, bitrate, jitter, frame, scarti</string>
+
+    <!-- Overlay di debug -->
+    <string name="debug_section_video">Video</string>
+    <string name="debug_section_audio">Audio</string>
+    <string name="debug_section_network">Rete</string>
+    <string name="debug_clients">Client: %1$d</string>
+
+    <!-- Hotkey e interfaccia TV -->
+    <string name="hotkey_service_description">Apre l\'app AirPlay con un tasto del telecomando configurabile (pressione lunga o doppia). La pressione breve di Muto/Volume continua a funzionare normalmente. Il tasto si configura dalle impostazioni dell\'app.</string>
+    <string name="setting_tv_ui">Interfaccia TV</string>
+    <string name="setting_tv_ui_desc">Interfaccia in stile Google TV, ottimizzata per il D-pad</string>
+
+    <string name="tv_panel_title">AirPlay</string>
+    <string name="tv_settings_subtitle">Server, hotkey e interfaccia</string>
+    <string name="tv_find_server">Cerca “%1$s” dal tuo iPhone/iPad/Mac</string>
+    <string name="tv_status_active">Attivo</string>
+    <string name="tv_status_active_count">Attivo · %1$d</string>
+    <string name="tv_fullscreen">Schermo intero</string>
+    <string name="tv_now_playing">In riproduzione</string>
+    <string name="tv_logs_lines">%1$d righe</string>
+    <string name="tv_logs_clear">Cancella log</string>
+    <string name="tv_cancel">Annulla</string>
+    <string name="tv_hint_main">OK seleziona • BACK esci</string>
+    <string name="tv_hint_settings">OK cambia • ←/→ scegli • BACK indietro</string>
+    <string name="tv_hint_back">BACK indietro</string>
+    <string name="tv_hint_player">OK pausa • ←/→ ±10s • BACK chiudi</string>
+    <string name="tv_ui_switch_desc">Disattiva per tornare all\'interfaccia classica</string>
+    <string name="tv_dev_options_shown">Opzioni avanzate mostrate</string>
+    <string name="tv_audio_delay_value">Valore</string>
+    <string name="tv_audio_buffer_stability">Stabilità buffer</string>
+
+    <string name="tv_section_hotkey">Hotkey telecomando</string>
+    <string name="tv_section_interface">Interfaccia</string>
+    <string name="tv_hotkey_service_active">● Servizio hotkey attivo</string>
+    <string name="tv_hotkey_service_inactive">● Servizio non attivo — abilitalo in Accessibilità</string>
+    <string name="tv_accessibility_settings">Impostazioni Accessibilità</string>
+    <string name="tv_hotkey_key">Tasto</string>
+    <string name="tv_hotkey_capture">Cattura un altro tasto…</string>
+    <string name="tv_hotkey_capture_active">Premi ora un tasto… (BACK annulla)</string>
+    <string name="tv_hotkey_gesture">Gesto</string>
+    <string name="tv_gesture_long">Pressione lunga</string>
+    <string name="tv_gesture_double">Doppia pressione</string>
+    <string name="tv_gesture_single">Pressione singola</string>
+    <string name="tv_shortpress_reserved">Il tasto sarà riservato all\'app</string>
+    <string name="tv_shortpress_kept">La pressione breve continua a funzionare normalmente</string>
+    <string name="tv_shortpress_native">Tasto lasciato nativo: il gesto attiverà anche la sua funzione</string>
+    <string name="tv_key_blue">Tasto Blu</string>
+    <string name="tv_key_red">Tasto Rosso</string>
+    <string name="tv_key_green">Tasto Verde</string>
+    <string name="tv_key_yellow">Tasto Giallo</string>
+    <string name="tv_key_play_pause">Play/Pausa</string>
+    <string name="tv_key_mute">Muto</string>
+    <string name="tv_show_volume">Tasti volume</string>
+    <string name="tv_show_volume_desc">Mostra i tasti del volume nella schermata di riproduzione</string>
+    <string name="tv_hint_now_playing">OK pausa • → menu • BACK esci</string>
+</resources>

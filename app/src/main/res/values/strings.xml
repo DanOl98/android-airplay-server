@@ -187,4 +187,50 @@
     <string name="hotkey_service_description">Opens the AirPlay app with a configurable remote-control key (long press or double press). Short presses of Mute/Volume keep working normally. Configure the key from the app settings.</string>
     <string name="setting_tv_ui">TV interface</string>
     <string name="setting_tv_ui_desc">Google TV styled interface, optimized for D-pad</string>
+
+    <!-- TV interface -->
+    <string name="tv_panel_title">AirPlay</string>
+    <string name="tv_settings_subtitle">Server, hotkey and interface</string>
+    <string name="tv_find_server">Look for “%1$s” on your iPhone/iPad/Mac</string>
+    <string name="tv_status_active">Active</string>
+    <string name="tv_status_active_count">Active · %1$d</string>
+    <string name="tv_fullscreen">Fullscreen</string>
+    <string name="tv_now_playing">Now playing</string>
+    <string name="tv_logs_lines">%1$d lines</string>
+    <string name="tv_logs_clear">Clear logs</string>
+    <string name="tv_cancel">Cancel</string>
+    <string name="tv_hint_main">OK select • BACK exit</string>
+    <string name="tv_hint_settings">OK change • ←/→ choose • BACK go back</string>
+    <string name="tv_hint_back">BACK go back</string>
+    <string name="tv_hint_player">OK pause • ←/→ ±10s • BACK close</string>
+    <string name="tv_ui_switch_desc">Turn off to go back to the classic interface</string>
+    <string name="tv_dev_options_shown">Advanced options shown</string>
+    <string name="tv_audio_delay_value">Value</string>
+    <string name="tv_audio_buffer_stability">Buffer stability</string>
+
+    <!-- TV interface: remote hotkey -->
+    <string name="tv_section_hotkey">Remote hotkey</string>
+    <string name="tv_section_interface">Interface</string>
+    <string name="tv_hotkey_service_active">● Hotkey service active</string>
+    <string name="tv_hotkey_service_inactive">● Service off — enable it in Accessibility</string>
+    <string name="tv_accessibility_settings">Accessibility settings</string>
+    <string name="tv_hotkey_key">Key</string>
+    <string name="tv_hotkey_capture">Capture another key…</string>
+    <string name="tv_hotkey_capture_active">Press a key now… (BACK to cancel)</string>
+    <string name="tv_hotkey_gesture">Gesture</string>
+    <string name="tv_gesture_long">Long press</string>
+    <string name="tv_gesture_double">Double press</string>
+    <string name="tv_gesture_single">Single press</string>
+    <string name="tv_shortpress_reserved">The key will be reserved for the app</string>
+    <string name="tv_shortpress_kept">Short press keeps working normally</string>
+    <string name="tv_shortpress_native">Key left native: the gesture also triggers its function</string>
+    <string name="tv_key_blue">Blue key</string>
+    <string name="tv_key_red">Red key</string>
+    <string name="tv_key_green">Green key</string>
+    <string name="tv_key_yellow">Yellow key</string>
+    <string name="tv_key_play_pause">Play/Pause</string>
+    <string name="tv_key_mute">Mute</string>
+    <string name="tv_show_volume">Volume controls</string>
+    <string name="tv_show_volume_desc">Show volume buttons in the now playing view</string>
+    <string name="tv_hint_now_playing">OK pause • → menu • BACK exit</string>
 </resources>

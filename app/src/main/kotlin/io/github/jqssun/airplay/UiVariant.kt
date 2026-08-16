@@ -2,6 +2,8 @@ package io.github.jqssun.airplay
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import android.view.KeyEvent
 import io.github.jqssun.airplay.ui.isTvDevice
 
@@ -26,6 +28,48 @@ object UiVariant {
         context,
         if (isTvUi(context)) TvMainActivity::class.java else MainActivity::class.java
     )
+}
+
+/** Opzioni proprie dell'interfaccia TV. */
+object TvOptions {
+    private const val SHOW_VOLUME = "tv_show_volume"
+
+    private fun prefs(context: Context) =
+        context.getSharedPreferences(Prefs.NAME, Context.MODE_PRIVATE)
+
+    /** Tasti volume nella schermata di riproduzione: spenti di default. */
+    fun showVolume(context: Context): Boolean =
+        prefs(context).getBoolean(SHOW_VOLUME, false)
+
+    fun setShowVolume(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(SHOW_VOLUME, enabled).apply()
+    }
+}
+
+/**
+ * Nome annunciato di default: quello con cui la TV è già conosciuta in casa,
+ * preceduto da "AirPlay" (es. "AirPlay TV della camera da letto").
+ *
+ * Il prefisso non è estetico ma necessario: usando il nome della TV tale e
+ * quale il servizio `_airplay._tcp` non supera il probing mDNS, perché quel
+ * nome è già occupato sulla rete dalla TV stessa (Google Cast / AirPlay
+ * integrato) — risultato: il dispositivo sparisce dalla lista.
+ *
+ * Resta comunque modificabile a mano dalle impostazioni.
+ */
+fun defaultServerName(context: Context): String {
+    val deviceName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+        runCatching {
+            Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)
+        }.getOrNull()
+    } else {
+        null
+    }
+    val base = deviceName?.takeIf { it.isNotBlank() }
+        ?: Build.MODEL?.takeIf { it.isNotBlank() }
+        ?: return Prefs.DEF_SERVER_NAME
+
+    return if (base.contains("airplay", ignoreCase = true)) base else "AirPlay $base"
 }
 
 /**

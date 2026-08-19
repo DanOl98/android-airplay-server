@@ -83,8 +83,11 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(viewModel.keepScreenOn, viewModel.connectionCount) { keep, conns ->
-                    keep && conns > 0
+                combine(
+                    viewModel.keepScreenOn, viewModel.keepScreenOnAudio,
+                    viewModel.connectionCount, viewModel.audioOnly
+                ) { keep, keepAudio, conns, audioOnly ->
+                    keep && conns > 0 && (keepAudio || !audioOnly)
                 }.collect { on ->
                     if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

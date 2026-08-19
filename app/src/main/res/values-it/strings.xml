@@ -101,6 +101,8 @@
     <string name="setting_auto_fullscreen_desc">Passa a schermo intero quando un client si connette</string>
     <string name="setting_keep_screen_on">Mantieni schermo acceso</string>
     <string name="setting_keep_screen_on_desc">Impedisci lo spegnimento mentre un client è connesso</string>
+    <string name="setting_keep_screen_on_audio">Mantieni acceso anche con solo audio</string>
+    <string name="setting_keep_screen_on_audio_desc">Se disattivo, lo schermo può spegnersi durante lo streaming solo audio (protegge i pannelli OLED)</string>
     <string name="setting_advertise_video">Annuncia il supporto AirPlay video</string>
     <string name="setting_advertise_video_desc">Se disattivo, i video vengono trasmessi come solo audio</string>
     <string name="setting_advertise_audio">Annuncia il supporto AirPlay audio</string>

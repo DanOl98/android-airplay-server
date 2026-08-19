@@ -44,6 +44,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
     val idlePreview by viewModel.idlePreview.collectAsState()
     val autoFullscreen by viewModel.autoFullscreen.collectAsState()
     val keepScreenOn by viewModel.keepScreenOn.collectAsState()
+    val keepScreenOnAudio by viewModel.keepScreenOnAudio.collectAsState()
     val advertiseVideo by viewModel.advertiseVideo.collectAsState()
     val advertiseAudio by viewModel.advertiseAudio.collectAsState()
     val launchOnConnect by viewModel.launchOnConnect.collectAsState()
@@ -241,6 +242,15 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 checked = keepScreenOn,
                 onCheckedChange = { viewModel.setKeepScreenOn(it) }
             )
+
+            if (keepScreenOn) {
+                SettingSwitch(
+                    title = stringResource(R.string.setting_keep_screen_on_audio),
+                    description = stringResource(R.string.setting_keep_screen_on_audio_desc),
+                    checked = keepScreenOnAudio,
+                    onCheckedChange = { viewModel.setKeepScreenOnAudio(it) }
+                )
+            }
 
             SettingSwitch(
                 title = stringResource(R.string.setting_idle_preview),

@@ -326,7 +326,11 @@ private fun TvPanelLayout(
                 }
                 when (e.key.nativeKeyCode) {
                     AndroidKeyEvent.KEYCODE_DPAD_RIGHT,
+                    AndroidKeyEvent.KEYCODE_DPAD_LEFT,
                     AndroidKeyEvent.KEYCODE_DPAD_UP,
+                    AndroidKeyEvent.KEYCODE_DPAD_DOWN,
+                    AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+                    AndroidKeyEvent.KEYCODE_ENTER,
                     AndroidKeyEvent.KEYCODE_MENU -> {
                         if (!panelRevealed) {
                             panelRevealed = true
@@ -405,6 +409,9 @@ private fun TvPanelLayout(
                 TvSection.MAIN -> TvMainSection(
                     viewModel, state, connections, serverName,
                     mirroringActive = mirroringActive,
+                    // col now-playing a fianco il focus iniziale spetta ai
+                    // comandi di riproduzione, non alla riga Server
+                    grabFocus = !nowPlaying,
                     onFullscreen = onFullscreen,
                     onOpenSettings = { onSectionChange(TvSection.SETTINGS) },
                     onOpenLogs = { onSectionChange(TvSection.LOGS) }
@@ -429,12 +436,15 @@ private fun ColumnScope.TvMainSection(
     connections: Int,
     serverName: String,
     mirroringActive: Boolean,
+    grabFocus: Boolean,
     onFullscreen: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenLogs: () -> Unit,
 ) {
     val serverFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { serverFocus.requestFocus() } }
+    if (grabFocus) {
+        LaunchedEffect(Unit) { runCatching { serverFocus.requestFocus() } }
+    }
 
     TvPanelTitle(stringResource(R.string.tv_panel_title), serverName)
 
@@ -511,6 +521,7 @@ private fun TvSettingsSection(
     val autoFullscreen by viewModel.autoFullscreen.collectAsState()
     val idlePreview by viewModel.idlePreview.collectAsState()
     val keepScreenOn by viewModel.keepScreenOn.collectAsState()
+    val keepScreenOnAudio by viewModel.keepScreenOnAudio.collectAsState()
     val overscanned by viewModel.overscanned.collectAsState()
     val resolution by viewModel.resolution.collectAsState()
     val maxFps by viewModel.maxFps.collectAsState()
@@ -533,6 +544,11 @@ private fun TvSettingsSection(
     var captureMode by remember { mutableStateOf(false) }
     var serviceEnabled by remember { mutableStateOf(isHotkeyServiceEnabled(context)) }
     var hasOverlay by remember { mutableStateOf(canDrawOverlays(context)) }
+
+    // senza una richiesta esplicita il focus cadrebbe sui comandi di
+    // riproduzione a sinistra invece che sulla prima riga del pannello
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
 
     // ricontrolla lo stato del servizio / permesso overlay al ritorno dalle impostazioni di sistema
     LaunchedEffect(Unit) {
@@ -597,6 +613,7 @@ private fun TvSettingsSection(
                 label = stringResource(R.string.tv_accessibility_settings),
                 icon = Icons.Default.Settings,
                 showChevron = true,
+                modifier = Modifier.focusRequester(firstFocus),
                 onClick = {
                     try {
                         context.startActivity(
@@ -755,6 +772,10 @@ private fun TvSettingsSection(
                     onClick = { viewModel.setAutoStart(!autoStart) })
                 TvRow(label = stringResource(R.string.setting_keep_screen_on), checked = keepScreenOn,
                     onClick = { viewModel.setKeepScreenOn(!keepScreenOn) })
+                if (keepScreenOn) {
+                    TvRow(label = stringResource(R.string.setting_keep_screen_on_audio), checked = keepScreenOnAudio,
+                        onClick = { viewModel.setKeepScreenOnAudio(!keepScreenOnAudio) })
+                }
                 TvRow(label = stringResource(R.string.setting_idle_preview), checked = idlePreview,
                     onClick = { viewModel.setIdlePreview(!idlePreview) })
                 TvRow(label = stringResource(R.string.setting_advertise_video), checked = advertiseVideo,
@@ -924,6 +945,10 @@ private fun TvLogsSection(viewModel: MainViewModel) {
         if (logs.isNotEmpty()) listState.scrollToItem(logs.size - 1)
     }
 
+    // come nelle impostazioni: il focus iniziale resta nel pannello
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
+
     Column {
         TvPanelTitle(
             stringResource(R.string.tab_logs),
@@ -955,6 +980,7 @@ private fun TvLogsSection(viewModel: MainViewModel) {
         Spacer(Modifier.height(10.dp))
         TvRow(
             label = stringResource(R.string.tv_logs_clear),
+            modifier = Modifier.focusRequester(firstFocus),
             onClick = { viewModel.clearLogs() }
         )
         TvHint(stringResource(R.string.tv_hint_back))
@@ -971,12 +997,11 @@ private fun TvNowPlaying(
     val player = viewModel.dacpPlayer
     val playFocus = remember { FocusRequester() }
 
-    // a tutto schermo i comandi sono l'unica cosa navigabile: il focus va lì
+    // entrando in immersive il focus va alla colonna (che riceve i key event);
+    // uscendone va al tasto play/pausa, non al pannello di destra
     LaunchedEffect(immersive) {
-        if (immersive) {
-            delay(120)
-            runCatching { playFocus.requestFocus() }
-        }
+        delay(120)
+        runCatching { playFocus.requestFocus() }
     }
 
     var playing by remember { mutableStateOf(true) }
@@ -993,20 +1018,32 @@ private fun TvNowPlaying(
 
     val contentWidth = if (immersive) 520.dp else 300.dp
 
+    // a tutto schermo i pulsanti sono nascosti: la colonna focusabile serve
+    // solo a far arrivare i key event al gestore del contenitore (frecce/OK
+    // richiamano il pannello)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+        modifier = Modifier
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .then(
+                if (immersive) Modifier
+                    .fillMaxHeight()
+                    .focusRequester(playFocus)
+                    .focusable()
+                else Modifier
+            )
     ) {
-        // senza i tasti volume avanza spazio: la copertina si prende quello
+        // a tutto schermo la copertina prende solo lo spazio che avanza (max
+        // 340dp): a misura fissa la colonna superava i ~540dp dello schermo e
+        // il promemoria in fondo restava tagliato fuori
         Box(
             modifier = Modifier
-                .size(
-                    when {
-                        immersive && !showVolume -> 340.dp
-                        immersive -> 300.dp
-                        showVolume -> 200.dp
-                        else -> 260.dp
-                    }
+                .then(
+                    if (immersive) Modifier
+                        .weight(1f, fill = false)
+                        .sizeIn(maxWidth = 340.dp, maxHeight = 340.dp)
+                        .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    else Modifier.size(if (showVolume) 200.dp else 260.dp)
                 )
                 .clip(RoundedCornerShape(16.dp))
                 .background(LocalTvAccent.current.row),
@@ -1065,7 +1102,7 @@ private fun TvNowPlaying(
             }
         }
 
-        if (player != null) {
+        if (player != null && !immersive) {
             Spacer(Modifier.height(16.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1122,15 +1159,6 @@ private fun TvNowPlaying(
             }
         }
 
-        if (immersive) {
-            Spacer(Modifier.height(18.dp))
-            Text(
-                text = stringResource(R.string.tv_hint_now_playing),
-                color = TvPalette.TextSecondary.copy(alpha = 0.8f),
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center
-            )
-        }
     }
 }
 

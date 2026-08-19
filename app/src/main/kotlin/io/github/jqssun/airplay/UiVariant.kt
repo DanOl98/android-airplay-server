@@ -48,9 +48,9 @@ object TvOptions {
 
 /**
  * Nome annunciato di default: quello con cui la TV è già conosciuta in casa,
- * preceduto da "AirPlay" (es. "AirPlay TV della camera da letto").
+ * seguito da "(AirPlay)" (es. "TV della camera da letto (AirPlay)").
  *
- * Il prefisso non è estetico ma necessario: usando il nome della TV tale e
+ * Il suffisso non è estetico ma necessario: usando il nome della TV tale e
  * quale il servizio `_airplay._tcp` non supera il probing mDNS, perché quel
  * nome è già occupato sulla rete dalla TV stessa (Google Cast / AirPlay
  * integrato) — risultato: il dispositivo sparisce dalla lista.
@@ -69,7 +69,7 @@ fun defaultServerName(context: Context): String {
         ?: Build.MODEL?.takeIf { it.isNotBlank() }
         ?: return Prefs.DEF_SERVER_NAME
 
-    return if (base.contains("airplay", ignoreCase = true)) base else "AirPlay $base"
+    return if (base.contains("airplay", ignoreCase = true)) base else "$base (AirPlay)"
 }
 
 /**

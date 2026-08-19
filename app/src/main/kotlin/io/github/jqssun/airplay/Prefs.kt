@@ -42,6 +42,8 @@ object Prefs {
     const val IDLE_PREVIEW = "idle_preview"; const val DEF_IDLE_PREVIEW = false
     const val AUTO_FULLSCREEN = "auto_fullscreen"; const val DEF_AUTO_FULLSCREEN = true
     const val KEEP_SCREEN_ON = "keep_screen_on"; const val DEF_KEEP_SCREEN_ON = true
+    // when off, audio-only sessions let the screen sleep (OLED burn-in protection)
+    const val KEEP_SCREEN_ON_AUDIO = "keep_screen_on_audio"; const val DEF_KEEP_SCREEN_ON_AUDIO = false
     const val ADVERTISE_VIDEO = "advertise_video"; const val DEF_ADVERTISE_VIDEO = true
     const val ADVERTISE_AUDIO = "advertise_audio"; const val DEF_ADVERTISE_AUDIO = true
     const val LAUNCH_ON_CONNECT = "launch_on_connect"; const val DEF_LAUNCH_ON_CONNECT = true

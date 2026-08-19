@@ -102,6 +102,8 @@
     <string name="setting_auto_fullscreen_desc">Enter fullscreen when a client connects</string>
     <string name="setting_keep_screen_on">Keep screen on</string>
     <string name="setting_keep_screen_on_desc">Prevent sleeping while a client is connected</string>
+    <string name="setting_keep_screen_on_audio">Keep screen on for audio-only</string>
+    <string name="setting_keep_screen_on_audio_desc">When off, the screen may sleep during audio-only streaming (protects OLED panels)</string>
     <string name="setting_advertise_video">Advertise AirPlay video support</string>
     <string name="setting_advertise_video_desc">When off, videos are cast as audio only streams</string>
     <string name="setting_advertise_audio">Advertise AirPlay audio support</string>
